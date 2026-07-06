@@ -3,507 +3,928 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOS System | Enterprise Command</title>
+    <title>SOS System</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #f8fafc;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
         }
-        /* Custom Scrollbar for a modern look */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        .view-section { display: none; }
-        .view-section.active { display: flex; }
-        .modal-bg { background-color: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); }
+        /* SOS Button Styling */
+        .sos-btn {
+            position: relative;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .sos-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .sos-btn:active {
+            transform: translateY(1px) scale(0.97);
+        }
+
+        /* View transitions */
+        .view-section {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .view-section.active {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Modal Pop Animation */
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-modal {
+            animation: modalPop 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        /* Custom Scrollbar for dashboard */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
         
-        /* Smooth transitions */
-        .transition-all { transition-property: all; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 300ms; }
+        /* Hide scrollbar utility for mobile horizontal scrolling */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col text-slate-800">
+<body class="text-gray-800 h-screen w-screen overflow-hidden flex flex-col">
 
-    <nav class="bg-white border-b border-slate-200 h-16 shrink-0 flex items-center justify-between px-4 sm:px-6 z-10 shadow-sm relative">
-        <div class="flex items-center gap-3">
-            <div class="bg-red-600 text-white p-2 rounded-lg shadow-md shadow-red-500/20"><i class="ph-fill ph-siren text-xl"></i></div>
-            <h1 class="font-bold text-xl tracking-tight text-slate-900 hidden sm:block">SOS System</h1>
-            <span id="nav-indicator" class="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full ml-2">System Login</span>
+    <nav class="bg-white/90 backdrop-blur-md shadow-sm z-10 px-4 sm:px-6 py-3 flex flex-wrap gap-3 justify-between items-center shrink-0 border-b border-gray-100">
+        <div class="flex items-center gap-2 text-red-600 font-bold text-lg sm:text-xl">
+            <i class="ph-fill ph-warning-circle text-2xl"></i>
+            <span>SOS System</span>
         </div>
-        
-        <div id="nav-user-panel" class="hidden items-center gap-4">
-            <div class="text-right hidden sm:block">
-                <p id="nav-user-name" class="text-sm font-bold text-slate-800 leading-tight">Name</p>
-                <p id="nav-user-role" class="text-xs font-medium text-slate-500">Role</p>
+        <div class="flex items-center gap-2 sm:gap-4">
+            <div id="nav-indicator" class="text-xs sm:text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">
+                System Login
             </div>
-            <div class="h-8 w-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 border border-slate-300">
-                <i class="ph-fill ph-user"></i>
-            </div>
-            <button onclick="logout()" class="text-slate-500 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors ml-2" title="Log Out">
-                <i class="ph ph-sign-out text-xl"></i>
+            <button id="btn-logout" onclick="logout()" class="hidden text-xs sm:text-sm font-medium text-red-600 hover:text-white bg-red-50 hover:bg-red-500 px-4 py-1.5 rounded-full transition-all shadow-sm">
+                Logout
             </button>
         </div>
     </nav>
 
-    <div id="view-login" class="view-section active flex-1 bg-slate-50 items-center justify-center p-4">
-        <div class="bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 w-full max-w-md">
-            <div class="text-center mb-8">
-                <div class="bg-slate-900 text-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-slate-900/20">
-                    <i class="ph-fill ph-shield-check text-3xl"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-slate-900 mb-1">Command Portal</h2>
-                <p class="text-sm text-slate-500">Sign in to access the system network</p>
-            </div>
-
-            <form id="login-form" onsubmit="handleLogin(event)" class="space-y-5">
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Username</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                            <i class="ph ph-user"></i>
-                        </div>
-                        <input type="text" id="login-username" required class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm font-medium text-slate-800">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Password</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                            <i class="ph ph-lock-key"></i>
-                        </div>
-                        <input type="password" id="login-password" required class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm font-medium text-slate-800">
-                    </div>
-                </div>
-                <p id="login-error" class="text-red-500 text-xs font-medium text-center hidden"><i class="ph ph-warning-circle"></i> Invalid credentials.</p>
-                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-all shadow-md mt-2 flex items-center justify-center gap-2">
-                    Secure Login <i class="ph ph-arrow-right"></i>
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <div id="view-client" class="view-section flex-1 bg-slate-50 flex-col overflow-hidden">
-        <!-- Client Profile Banner -->
-        <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
-            <div class="flex items-center gap-4">
-                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700"><i class="ph-fill ph-buildings text-2xl text-blue-400"></i></div>
-                <div>
-                    <p class="text-xs font-medium text-slate-400 uppercase tracking-widest mb-0.5">Assigned Location Profile</p>
-                    <h3 id="client-display-location" class="text-xl font-bold leading-tight">Loading...</h3>
-                    <p id="client-display-name" class="text-sm text-slate-300 mt-1"><i class="ph ph-user"></i> Loading...</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="flex-1 flex flex-col md:flex-row p-4 sm:p-6 gap-6 overflow-hidden max-w-7xl mx-auto w-full">
-            <!-- SOS Buttons Container -->
-            <div class="flex-1 flex flex-col bg-white rounded-3xl shadow-sm border border-slate-200 p-6 sm:p-8 overflow-hidden">
-                <h3 class="text-lg font-bold text-slate-800 mb-2 border-b border-slate-100 pb-4">Emergency Signals</h3>
-                <p class="text-sm text-slate-500 mb-6">Select the specific type of assistance required. Operators will be notified instantly.</p>
-                <div id="client-buttons-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto pr-2 pb-4">
-                    <!-- Buttons Injected Here -->
-                </div>
-            </div>
-
-            <!-- Client History Panel -->
-            <div class="w-full md:w-96 flex flex-col bg-slate-900 text-white rounded-3xl shadow-lg overflow-hidden shrink-0">
-                <div class="px-6 py-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-                    <h3 class="font-bold flex items-center gap-2"><i class="ph-fill ph-clock-counter-clockwise text-blue-400"></i> Signal Status</h3>
-                </div>
-                <div class="flex-1 overflow-y-auto p-4 space-y-3" id="client-alerts-container">
-                    <!-- Client alerts injected here -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="view-dashboard" class="view-section flex-col md:flex-row flex-1 bg-slate-50 overflow-hidden">
-        <!-- Sidebar Navigation -->
-        <div class="w-full md:w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800">
-            <div class="p-4 md:p-6 text-xs font-bold text-slate-500 uppercase tracking-widest border-b border-slate-800">Command Center</div>
-            <div class="p-3 md:p-4 space-y-1.5 flex-1 overflow-y-auto flex flex-row md:flex-col overflow-x-auto md:overflow-x-hidden">
-                <button onclick="switchDashTab('alerts')" id="tab-alerts" class="dash-tab w-full text-left px-4 py-3 rounded-xl font-medium transition-all flex items-center gap-3 bg-blue-600 text-white shadow-md whitespace-nowrap">
-                    <i class="ph-fill ph-radar text-lg"></i> Live Alerts
-                </button>
-                <button onclick="switchDashTab('accounts')" id="tab-accounts" class="dash-tab w-full text-left px-4 py-3 rounded-xl font-medium hover:bg-slate-800 transition-all flex items-center gap-3 whitespace-nowrap">
-                    <i class="ph-fill ph-users text-lg"></i> System Accounts
-                </button>
-                <button onclick="switchDashTab('buttons')" id="tab-buttons" class="dash-tab w-full text-left px-4 py-3 rounded-xl font-medium hover:bg-slate-800 transition-all flex items-center gap-3 whitespace-nowrap">
-                    <i class="ph-fill ph-squares-four text-lg"></i> SOS Settings
-                </button>
-            </div>
-        </div>
-
-        <!-- Dashboard Content Area -->
-        <div class="flex-1 flex flex-col overflow-hidden relative bg-slate-50/50">
+    <main class="flex-1 overflow-y-auto relative">
+        
+        <!-- LOGIN VIEW (Replaces Main Menu) -->
+        <div id="view-login" class="view-section active flex-col items-center justify-center h-full p-4 sm:p-6 w-full">
             
-            <div id="dash-view-alerts" class="flex-1 flex flex-col h-full overflow-hidden absolute inset-0">
-                <!-- Clickable Metric Cards -->
-                <div class="grid grid-cols-3 gap-3 sm:gap-6 p-4 sm:p-6 shrink-0">
-                    <div id="card-filter-active" onclick="setAlertFilter('active')" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border-2 border-red-500 flex flex-col sm:flex-row items-center sm:items-start gap-3 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md text-center sm:text-left">
-                        <div class="bg-red-100 p-3 rounded-xl text-red-600 shrink-0"><i class="ph-fill ph-warning-circle text-2xl"></i></div>
+            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 w-full max-w-sm flex flex-col items-center">
+                
+                <div class="bg-red-50 text-red-600 p-3 rounded-full mb-4">
+                    <i class="ph-fill ph-lock-key text-3xl"></i>
+                </div>
+
+                <div class="text-center mb-6 w-full">
+                    <h1 class="text-xl font-bold text-gray-900 tracking-tight">System Login</h1>
+                    <p class="text-xs text-gray-500 mt-1">Authenticate to access network</p>
+                </div>
+
+                <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4 w-full">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Username</label>
+                        <input type="text" id="login-username" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-gray-800 text-sm shadow-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Password</label>
+                        <input type="password" id="login-password" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-gray-800 text-sm shadow-sm">
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-gray-900 hover:bg-black text-white font-medium py-3 rounded-xl transition-all shadow-md hover:shadow-lg mt-2 text-sm tracking-wide">
+                        Sign In
+                    </button>
+                </form>
+
+            </div>
+        </div>
+
+        <!-- CLIENT VIEW -->
+        <div id="view-client" class="view-section flex-col items-center justify-start sm:justify-center h-full p-4 sm:p-6 w-full max-w-4xl mx-auto overflow-y-auto">
+            
+            <div class="bg-white rounded-3xl shadow-xl shadow-gray-200/50 p-6 sm:p-8 w-full border border-gray-100 flex flex-col items-center">
+                <h2 class="text-xl sm:text-2xl font-bold mb-6 text-center text-gray-800">Emergency Beacons</h2>
+                
+                <div class="w-full max-w-md mb-4 bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200 shadow-inner">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Assigned Profile</span>
+                        <span id="client-display-location" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-md font-bold shadow-sm"></span>
+                    </div>
+                    <div id="client-display-name" class="font-medium text-gray-800 flex items-center gap-2 text-lg">
+                        <i class="ph-fill ph-user-circle text-2xl text-blue-500"></i> <span></span>
+                    </div>
+                </div>
+
+                <div id="client-buttons-container" class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6 w-full mt-6">
+                    <!-- Dynamic SOS Buttons Injected Here -->
+                </div>
+                
+                <!-- Client Action History -->
+                <div class="w-full mt-10 pt-6 border-t border-gray-100 flex flex-col items-center">
+                    <h3 class="font-semibold text-gray-700 mb-4 flex items-center gap-2"><i class="ph-fill ph-clock-counter-clockwise text-blue-500"></i> My Alert Status History</h3>
+                    <div id="client-alerts-container" class="w-full max-w-2xl space-y-3">
+                        <!-- Client alerts injected here -->
+                    </div>
+                </div>
+
+                <p class="text-sm text-gray-400 text-center mt-8">Select the appropriate beacon for immediate dispatch. Alert will be sent instantly.</p>
+            </div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dashboard" class="view-section flex-col h-full bg-gray-50">
+            <div class="bg-gray-900 text-white p-4 flex flex-col lg:flex-row justify-between items-start lg:items-center shrink-0 gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gray-800 p-2 rounded-lg"><i class="ph-fill ph-desktop text-xl text-blue-400"></i></div>
+                    <h2 class="font-semibold text-lg">Central Dispatch</h2>
+                </div>
+                
+                <!-- Dashboard Navigation Tabs -->
+                <div class="flex overflow-x-auto w-full lg:w-auto bg-gray-800/50 backdrop-blur-sm rounded-lg p-1.5 border border-gray-700/50 hide-scrollbar gap-1">
+                    <button onclick="switchDashTab('alerts')" id="tab-alerts" class="dash-tab whitespace-nowrap px-4 py-2 rounded-md text-sm font-medium bg-gray-700 text-white transition-all shadow-sm">Live Alerts</button>
+                    <button onclick="switchDashTab('accounts')" id="tab-accounts" class="dash-tab whitespace-nowrap px-4 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700/50 transition-all">Accounts</button>
+                    <button onclick="switchDashTab('buttons')" id="tab-buttons" class="dash-tab whitespace-nowrap px-4 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700/50 transition-all">SOS Settings</button>
+                </div>
+
+                <div class="flex items-center gap-4 self-end lg:self-auto">
+                    <div class="flex items-center gap-2 text-xs font-medium bg-gray-800/80 px-3 py-1.5 rounded-full border border-gray-700 shadow-inner text-gray-300">
+                        <span class="relative flex h-2.5 w-2.5">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                        </span>
+                        System Online
+                    </div>
+                </div>
+            </div>
+
+            <!-- DASHBOARD TAB: ALERTS -->
+            <div id="dash-view-alerts" class="flex-1 flex flex-col overflow-hidden">
+                <!-- Stats Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 p-4 sm:p-6 shrink-0">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                        <div class="bg-red-100 p-3 rounded-lg text-red-600"><i class="ph-fill ph-warning-circle text-2xl"></i></div>
                         <div>
-                            <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Active</p>
-                            <p id="stat-active" class="text-2xl sm:text-3xl font-black text-slate-800">0</p>
+                            <p class="text-sm text-gray-500">Active Alerts</p>
+                            <p id="stat-active" class="text-2xl font-bold text-gray-800">0</p>
                         </div>
                     </div>
-                    <div id="card-filter-acknowledged" onclick="setAlertFilter('acknowledged')" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border-2 border-transparent hover:border-amber-300 flex flex-col sm:flex-row items-center sm:items-start gap-3 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md text-center sm:text-left">
-                        <div class="bg-amber-100 p-3 rounded-xl text-amber-600 shrink-0"><i class="ph-fill ph-clock text-2xl"></i></div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                        <div class="bg-yellow-100 p-3 rounded-lg text-yellow-600"><i class="ph-fill ph-clock text-2xl"></i></div>
                         <div>
-                            <p class="text-xs font-bold text-slate-500 uppercase tracking-wide shrink-0">Acknowledged</p>
-                            <p id="stat-ack" class="text-2xl sm:text-3xl font-black text-slate-800">0</p>
+                            <p class="text-sm text-gray-500">Acknowledged</p>
+                            <p id="stat-ack" class="text-2xl font-bold text-gray-800">0</p>
                         </div>
                     </div>
-                    <div id="card-filter-resolved" onclick="setAlertFilter('resolved')" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border-2 border-transparent hover:border-emerald-300 flex flex-col sm:flex-row items-center sm:items-start gap-3 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-md text-center sm:text-left">
-                        <div class="bg-emerald-100 p-3 rounded-xl text-emerald-600 shrink-0"><i class="ph-fill ph-check-circle text-2xl"></i></div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
+                        <div class="bg-green-100 p-3 rounded-lg text-green-600"><i class="ph-fill ph-check-circle text-2xl"></i></div>
                         <div>
-                            <p class="text-xs font-bold text-slate-500 uppercase tracking-wide shrink-0">Resolved</p>
-                            <p id="stat-resolved" class="text-2xl sm:text-3xl font-black text-slate-800">0</p>
+                            <p class="text-sm text-gray-500">Resolved</p>
+                            <p id="stat-resolved" class="text-2xl font-bold text-gray-800">0</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Unified Alert List Panel -->
-                <div class="flex-1 px-4 sm:px-6 pb-6 pt-0 overflow-hidden flex flex-col">
-                    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
-                        <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-3 bg-slate-50/50">
-                            <h3 id="alert-panel-title" class="font-bold text-slate-800 flex items-center gap-2 text-lg">
-                                <i class="ph-fill ph-siren text-red-500"></i> Active Signals
-                            </h3>
-                            <!-- Dropdown Filters (Only visible when Resolved is selected) -->
-                            <div id="resolved-filters" class="hidden gap-2 flex-wrap">
-                                <select id="filter-location" onchange="renderDashboardAlerts()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none bg-white font-medium text-slate-700">
+                <!-- Alerts Split View -->
+                <div class="flex-1 flex flex-col lg:flex-row gap-4 p-4 sm:p-6 pt-0 overflow-hidden">
+                    
+                    <!-- Active & Dispatched Panel -->
+                    <div class="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 font-bold text-gray-800 flex justify-between items-center shrink-0">
+                            <span class="flex items-center gap-2"><i class="ph-fill ph-siren text-red-500"></i> Active Signals</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-50/50 space-y-3" id="alerts-container">
+                            <!-- Active Alerts injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Resolved History Panel -->
+                    <div class="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 font-bold text-gray-800 flex justify-between items-center flex-wrap gap-2 shrink-0">
+                            <span class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-green-500"></i> Resolved History</span>
+                            
+                            <!-- Filters -->
+                            <div class="flex gap-2 text-xs font-normal">
+                                <select id="filter-location" onchange="renderDashboardAlerts()" class="border border-gray-200 rounded-lg px-2 py-1.5 outline-none bg-white shadow-sm focus:ring-1 focus:ring-blue-500">
                                     <option value="all">All Locations</option>
                                 </select>
-                                <select id="filter-operator" onchange="renderDashboardAlerts()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none bg-white font-medium text-slate-700">
+                                <select id="filter-operator" onchange="renderDashboardAlerts()" class="border border-gray-200 rounded-lg px-2 py-1.5 outline-none bg-white shadow-sm focus:ring-1 focus:ring-blue-500">
                                     <option value="all">All Operators</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/30" id="alerts-container">
-                            <!-- Dashboard Alerts Injected Here -->
+                        <div class="flex-1 overflow-y-auto p-3 sm:p-4 bg-gray-50/50 space-y-3" id="resolved-container">
+                            <!-- Resolved Alerts injected here -->
                         </div>
                     </div>
+
                 </div>
             </div>
 
-            <div id="dash-view-accounts" class="hidden flex-col h-full overflow-hidden absolute inset-0 p-4 sm:p-6">
-                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
-                    <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-wrap gap-4">
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-lg">User Directory</h3>
-                            <p class="text-xs text-slate-500 font-medium">Manage network access and roles</p>
-                        </div>
-                        <button onclick="openModal('modal-account')" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2">
-                            <i class="ph ph-plus-circle text-lg"></i> Add Account
-                        </button>
+            <!-- DASHBOARD TAB: ACCOUNTS -->
+            <div id="dash-view-accounts" class="hidden flex-1 p-4 sm:p-6 overflow-hidden flex-col gap-4">
+                <div class="flex justify-between items-center bg-white px-6 py-4 rounded-2xl shadow-sm border border-gray-100 shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-blue-50 p-2 rounded-lg text-blue-600"><i class="ph-fill ph-users text-xl"></i></div>
+                        <h3 class="font-bold text-gray-800">System Accounts</h3>
                     </div>
-                    <div class="flex-1 overflow-auto">
-                        <table class="w-full text-left text-sm whitespace-nowrap">
-                            <thead class="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider sticky top-0 border-b border-slate-100 z-10">
-                                <tr>
-                                    <th class="px-6 py-4">Username / Location</th>
-                                    <th class="px-6 py-4">Contact Name</th>
-                                    <th class="px-6 py-4">Role Level</th>
-                                    <th class="px-6 py-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="table-accounts" class="divide-y divide-slate-100 text-slate-700 font-medium">
-                                <!-- Accounts injected here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div id="dash-view-buttons" class="hidden flex-col h-full overflow-hidden absolute inset-0 p-4 sm:p-6">
-                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden max-w-4xl mx-auto w-full">
-                    <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-wrap gap-4">
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-lg">Emergency Button Config</h3>
-                            <p class="text-xs text-slate-500 font-medium">Customize signals available to clients</p>
-                        </div>
-                        <button onclick="openModal('modal-button')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center gap-2">
-                            <i class="ph ph-plus-circle text-lg"></i> Add Button
-                        </button>
-                    </div>
-                    <div class="flex-1 overflow-y-auto p-6" id="settings-buttons-container">
-                        <!-- Buttons managed here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    
-    <!-- Account Modal -->
-    <div id="modal-account" class="fixed inset-0 modal-bg hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden transform transition-all border border-slate-100">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 class="font-bold text-slate-800">Register New Account</h3>
-                <button onclick="closeModal('modal-account')" class="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50"><i class="ph ph-x text-lg"></i></button>
-            </div>
-            <form onsubmit="createAccount(event)" class="p-6 space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Role Assignment</label>
-                    <select id="new-acc-role" onchange="toggleLocationFields()" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium">
-                        <option value="client">Client (Requires Assigned Location)</option>
-                        <option value="TSS">Technical Supervisor (TSS)</option>
-                        <option value="LOL">Live Operator Lead (LOL)</option>
-                        <option value="LOT">Live Operator Trainer (LOT)</option>
-                        <option value="LO">Live Operator (LO)</option>
-                        <option value="POC">Point of Contact (POC)</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Username</label>
-                        <input type="text" id="new-acc-user" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Password</label>
-                        <input type="text" id="new-acc-pass" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Contact / Display Name</label>
-                    <input type="text" id="new-acc-name" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium">
+                    <button onclick="openModal('modal-account')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm flex items-center gap-2">
+                        <i class="ph ph-plus-circle text-lg"></i> Add Account
+                    </button>
                 </div>
                 
-                <!-- Location Fields (Only for Client) -->
-                <div id="field-location">
-                    <div class="grid grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Floor Level</label>
-                            <input type="text" id="new-acc-floor" list="floor-suggestions" placeholder="e.g. 3rd Floor" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium">
-                            <datalist id="floor-suggestions"></datalist>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Room / Area</label>
-                            <input type="text" id="new-acc-room" placeholder="e.g. Rm 302" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium">
+                <div class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
+                    <div class="flex-1 overflow-y-auto p-0">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead class="bg-gray-50/80 sticky top-0 z-10 backdrop-blur-sm">
+                                    <tr class="text-gray-500 border-b border-gray-100">
+                                        <th class="px-6 py-4 font-semibold">Username</th>
+                                        <th class="px-6 py-4 font-semibold">Role</th>
+                                        <th class="px-6 py-4 font-semibold">Password</th>
+                                        <th class="px-6 py-4 font-semibold">Profile Name</th>
+                                        <th class="px-6 py-4 font-semibold">Location</th>
+                                        <th class="px-6 py-4 font-semibold text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="accounts-table-body" class="divide-y divide-gray-50">
+                                    <!-- Accounts injected here -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
-                
-                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl mt-2 transition-all">Save Account</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Button Modal -->
-    <div id="modal-button" class="fixed inset-0 modal-bg hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden transform transition-all border border-slate-100">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 class="font-bold text-slate-800">Create SOS Button</h3>
-                <button onclick="closeModal('modal-button')" class="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50"><i class="ph ph-x text-lg"></i></button>
             </div>
-            <form onsubmit="createButton(event)" class="p-6 space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Signal Label</label>
-                    <input type="text" id="new-btn-label" required placeholder="e.g. Technical Issue" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium">
+
+            <!-- DASHBOARD TAB: BUTTONS -->
+            <div id="dash-view-buttons" class="hidden flex-1 p-4 sm:p-6 overflow-hidden flex-col gap-4">
+                <div class="flex justify-between items-center bg-white px-6 py-4 rounded-2xl shadow-sm border border-gray-100 shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-purple-50 p-2 rounded-lg text-purple-600"><i class="ph-fill ph-circles-four text-xl"></i></div>
+                        <div>
+                            <h3 class="font-bold text-gray-800 hidden sm:block">SOS Button Configurations</h3>
+                            <h3 class="font-bold text-gray-800 sm:hidden">SOS Buttons</h3>
+                            <p class="text-xs text-gray-500 hidden sm:block">Deploy custom emergency beacons to clients</p>
+                        </div>
+                    </div>
+                    <button onclick="openModal('modal-btn')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm flex items-center gap-2">
+                        <i class="ph ph-plus-circle text-lg"></i> Add Button
+                    </button>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Color Theme</label>
-                    <select id="new-btn-color" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium">
-                        <option value="red">Emergency Red</option>
-                        <option value="blue">Technical Blue</option>
-                        <option value="orange">Warning Orange</option>
-                        <option value="purple">Security Purple</option>
-                        <option value="teal">Medical Teal</option>
-                    </select>
+                
+                <div class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                    <div class="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50/30">
+                        <div id="admin-buttons-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            <!-- Buttons injected here -->
+                        </div>
+                    </div>
                 </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl mt-2 transition-all">Deploy Button</button>
-            </form>
+            </div>
+
         </div>
-    </div>
+
+        <!-- MODALS -->
+        <!-- Add Account Modal -->
+        <div id="modal-account" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-modal">
+                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="ph ph-user-plus text-blue-500 text-xl"></i> Create Account</h3>
+                    <button onclick="closeModal('modal-account')" class="text-gray-400 hover:text-gray-700 transition-colors p-1 rounded-md hover:bg-gray-200"><i class="ph ph-x text-lg"></i></button>
+                </div>
+                <form id="form-create-account" onsubmit="createAccount(event)" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Account Role</label>
+                        <select id="new-acc-role" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                            <option value="tss">1. Technical Supervisor (TSS) - Admin</option>
+                            <option value="lol">2. Live Operator Lead (LOL) - Admin</option>
+                            <option value="lot">3. Live Operator Trainer (LOT) - Admin</option>
+                            <option value="lo">4. Live Operator (LO) - Alerts Only</option>
+                            <option value="poc">5. Point of Contact (POC) - Admin</option>
+                            <option value="client">6. Client (Beacon User)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Username (Login ID)</label>
+                        <input type="text" id="new-acc-user" required placeholder="e.g. guard1" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Password</label>
+                        <input type="text" id="new-acc-pass" required placeholder="e.g. 1234" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Display Name</label>
+                        <input type="text" id="new-acc-name" required placeholder="e.g. Gate Security" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                    </div>
+                    <div id="field-location" class="hidden">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Floor Level</label>
+                                <select id="new-acc-floor" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                                    <option value="">Select Floor</option>
+                                    <option value="1st Floor">1st Floor</option>
+                                    <option value="2nd Floor">2nd Floor</option>
+                                    <option value="3rd Floor">3rd Floor</option>
+                                    <option value="4th Floor">4th Floor</option>
+                                    <option value="5th Floor">5th Floor</option>
+                                    <option value="6th Floor">6th Floor</option>
+                                    <option value="7th Floor">7th Floor</option>
+                                    <option value="8th Floor">8th Floor</option>
+                                    <option value="9th Floor">9th Floor</option>
+                                    <option value="10th Floor">10th Floor</option>
+                                    <option value="Basement">Basement</option>
+                                    <option value="Ground Floor">Ground Floor</option>
+                                    <option value="Roof Deck">Roof Deck</option>
+                                    <option value="Outside Area">Outside Area</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Room / Area</label>
+                                <input type="text" id="new-acc-room" placeholder="e.g. Rm 101 or Lobby" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pt-2 flex gap-3">
+                        <button type="button" onclick="closeModal('modal-account')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl transition-all font-medium text-sm">Cancel</button>
+                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl transition-all shadow-md hover:shadow-lg text-sm font-bold tracking-wide">Add Account</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Button Modal -->
+        <div id="modal-btn" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-modal">
+                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="ph ph-plus-circle text-purple-500 text-xl"></i> Create SOS Beacon</h3>
+                    <button onclick="closeModal('modal-btn')" class="text-gray-400 hover:text-gray-700 transition-colors p-1 rounded-md hover:bg-gray-200"><i class="ph ph-x text-lg"></i></button>
+                </div>
+                <form id="form-create-btn" onsubmit="createButton(event)" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Button Label</label>
+                        <input type="text" id="new-btn-label" required placeholder="e.g. Technical Issue" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Color Theme</label>
+                        <select id="new-btn-color" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm">
+                            <option value="red">Red (Critical / Fire)</option>
+                            <option value="blue">Blue (Technical / IT)</option>
+                            <option value="green">Green (Medical / Health)</option>
+                            <option value="yellow">Yellow (Warning / Sub-denial)</option>
+                            <option value="purple">Purple (Other / Custom)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Icon Style</label>
+                        <select id="new-btn-icon" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm">
+                            <option value="ph-warning">Warning (Triangle)</option>
+                            <option value="ph-siren">Siren (Emergency)</option>
+                            <option value="ph-first-aid">First Aid (Medical)</option>
+                            <option value="ph-shield-warning">Shield (Security)</option>
+                            <option value="ph-wrench">Wrench (Technical)</option>
+                            <option value="ph-fire">Fire</option>
+                        </select>
+                    </div>
+                    <div class="pt-2 flex gap-3">
+                        <button type="button" onclick="closeModal('modal-btn')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl transition-all font-medium text-sm">Cancel</button>
+                        <button type="submit" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl transition-all shadow-md hover:shadow-lg text-sm font-bold tracking-wide">Deploy to Clients</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom Toast Notification System -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
     <script>
-        // Constants & Core Storage
-        const STORAGE_KEY = 'sos_alerts_db';
-        const USERS_KEY = 'sos_users_db';
-        const BUTTONS_KEY = 'sos_buttons_db';
+        const STORAGE_KEY = 'sos_system_data'; // Alerts
+        const USERS_KEY = 'sos_users';         // Accounts
+        const BTNS_KEY = 'sos_btn_types';      // Buttons Configuration
+        
+        // UI Elements
+        const navIndicator = document.getElementById('nav-indicator');
+        const btnLogout = document.getElementById('btn-logout');
+        const viewLogin = document.getElementById('view-login');
+        const viewClient = document.getElementById('view-client');
+        const viewDashboard = document.getElementById('view-dashboard');
+        
+        const loginUsernameInput = document.getElementById('login-username');
+        const loginPasswordInput = document.getElementById('login-password');
+        const clientDisplayName = document.getElementById('client-display-name');
+        const clientDisplayLocation = document.getElementById('client-display-location');
+        const clientButtonsContainer = document.getElementById('client-buttons-container');
+        
+        const alertsContainer = document.getElementById('alerts-container');
+        const statActive = document.getElementById('stat-active');
+        const statAck = document.getElementById('stat-ack');
+        const statResolved = document.getElementById('stat-resolved');
 
-        // Role Hierarchy Dictionary
-        const ROLE_LEVELS = {
-            'TSS': { level: 1, label: 'Technical Supervisor (TSS)', isAdmin: true },
-            'LOL': { level: 2, label: 'Live Operator Lead (LOL)', isAdmin: true },
-            'LOT': { level: 3, label: 'Live Operator Trainer (LOT)', isAdmin: true },
-            'LO':  { level: 4, label: 'Live Operator (LO)', isAdmin: false },
-            'POC': { level: 5, label: 'Point of Contact (POC)', isAdmin: true },
-            'client': { level: 6, label: 'Client', isAdmin: false }
+        // Role & Permission Definitions
+        const ROLE_MAP = {
+            'tss': { label: 'Technical Supervisor (TSS)', level: 1, type: 'admin', badge: 'bg-indigo-100 text-indigo-700' },
+            'lol': { label: 'Live Operator Lead (LOL)', level: 2, type: 'admin', badge: 'bg-blue-100 text-blue-700' },
+            'lot': { label: 'Live Operator Trainer (LOT)', level: 3, type: 'admin', badge: 'bg-sky-100 text-sky-700' },
+            'lo': { label: 'Live Operator (LO)', level: 4, type: 'operator', badge: 'bg-cyan-100 text-cyan-700' },
+            'poc': { label: 'Point of Contact (POC)', level: 5, type: 'admin', badge: 'bg-purple-100 text-purple-700' },
+            'client': { label: 'Client Node', level: 6, type: 'client', badge: 'bg-gray-100 text-gray-700' },
+            
+            // Legacy fallbacks
+            'operator': { label: 'Legacy Operator', level: 99, type: 'admin', badge: 'bg-gray-100 text-gray-700' }
         };
 
-        const DEFAULT_USERS = {
-            'admin': { username: 'admin', pass: '123', role: 'TSS', name: 'System Admin', location: 'Command Center' }
-        };
+        // Setup Role Change Listener for Account Creation
+        const roleSelect = document.getElementById('new-acc-role');
+        const locField = document.getElementById('field-location');
+        const floorInput = document.getElementById('new-acc-floor');
+        const roomInput = document.getElementById('new-acc-room');
 
-        const DEFAULT_BUTTONS = [
-            { id: 'btn_default_1', label: 'General Emergency', color: 'red' }
-        ];
+        // Modal Functions
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        
+        if (roleSelect) {
+            roleSelect.addEventListener('change', (e) => {
+                // Hide location input for system operators, show for clients
+                if (e.target.value !== 'client') {
+                    locField.style.display = 'none';
+                    floorInput.removeAttribute('required');
+                    roomInput.removeAttribute('required');
+                } else {
+                    locField.style.display = 'block';
+                    floorInput.setAttribute('required', 'required');
+                    roomInput.setAttribute('required', 'required');
+                }
+            });
+        }
+
+        // Admin Tabs Elements
+        const dashViewAlerts = document.getElementById('dash-view-alerts');
+        const dashViewAccounts = document.getElementById('dash-view-accounts');
+        const dashViewButtons = document.getElementById('dash-view-buttons');
+        const dashTabs = document.querySelectorAll('.dash-tab');
+
+        let currentView = 'login';
+        let currentUser = null;
 
         const COLOR_MAP = {
-            'red': { bg: 'bg-red-500', hover: 'hover:bg-red-600', ring: 'ring-red-500', shadow: 'shadow-red-500/30' },
-            'blue': { bg: 'bg-blue-500', hover: 'hover:bg-blue-600', ring: 'ring-blue-500', shadow: 'shadow-blue-500/30' },
-            'orange': { bg: 'bg-orange-500', hover: 'hover:bg-orange-600', ring: 'ring-orange-500', shadow: 'shadow-orange-500/30' },
-            'purple': { bg: 'bg-purple-500', hover: 'hover:bg-purple-600', ring: 'ring-purple-500', shadow: 'shadow-purple-500/30' },
-            'teal': { bg: 'bg-teal-500', hover: 'hover:bg-teal-600', ring: 'ring-teal-500', shadow: 'shadow-teal-500/30' }
+            'red': { class: 'bg-red-600 hover:bg-red-700 shadow-[0_0_20px_rgba(239,68,68,0.5)]', hex: '#ef4444' },
+            'blue': { class: 'bg-blue-600 hover:bg-blue-700 shadow-[0_0_20px_rgba(37,99,235,0.5)]', hex: '#3b82f6' },
+            'green': { class: 'bg-green-600 hover:bg-green-700 shadow-[0_0_20px_rgba(22,163,74,0.5)]', hex: '#22c55e' },
+            'yellow': { class: 'bg-yellow-500 hover:bg-yellow-600 shadow-[0_0_20px_rgba(234,179,8,0.5)]', hex: '#eab308' },
+            'purple': { class: 'bg-purple-600 hover:bg-purple-700 shadow-[0_0_20px_rgba(147,51,234,0.5)]', hex: '#a855f7' }
         };
 
-        // State Variables
-        let currentUser = null;
-        let currentView = 'login';
-        let currentAlertFilter = 'active';
-
-        // DB Helpers
-        function getDB(key) {
-            const data = localStorage.getItem(key);
-            if (!data) {
-                if (key === USERS_KEY) return DEFAULT_USERS;
-                if (key === BUTTONS_KEY) return DEFAULT_BUTTONS;
-                return [];
+        function initSystemData() {
+            if (!localStorage.getItem(USERS_KEY)) {
+                const defaultUsers = {
+                    'admin': { password: '123', role: 'tss', name: 'System Admin', location: 'Command Center' },
+                    'lobby': { password: '123', role: 'client', name: 'Receptionist', location: 'Main Lobby' }
+                };
+                localStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
             }
-            return JSON.parse(data);
-        }
-        function saveDB(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
-
-        // Initialization
-        window.onload = () => {
-            if(!localStorage.getItem(USERS_KEY)) saveDB(USERS_KEY, DEFAULT_USERS);
-            if(!localStorage.getItem(BUTTONS_KEY)) saveDB(BUTTONS_KEY, DEFAULT_BUTTONS);
-            switchView('login');
-            setInterval(syncSystem, 2000);
+            if (!localStorage.getItem(BTNS_KEY)) {
+                const defaultBtns = [
+                    { id: 'btn_' + Date.now(), label: 'General Emergency', color: 'red', icon: 'ph-warning' },
+                    { id: 'btn_' + (Date.now()+1), label: 'Medical Event', color: 'green', icon: 'ph-first-aid' },
+                    { id: 'btn_' + (Date.now()+2), label: 'Sub-Denial', color: 'yellow', icon: 'ph-shield-warning' }
+                ];
+                localStorage.setItem(BTNS_KEY, JSON.stringify(defaultBtns));
+            }
         }
 
-        // View Management
+        // Generic Database getter/setter
+        function getDB(key) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : (key === USERS_KEY ? {} : []);
+            } catch (e) { return (key === USERS_KEY ? {} : []); }
+        }
+
+        function saveDB(key, data, eventType) {
+            localStorage.setItem(key, JSON.stringify(data));
+            window.dispatchEvent(new CustomEvent('sosDataChanged', { detail: { type: eventType } }));
+        }
+
         function switchView(viewName) {
             currentView = viewName;
-            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            viewLogin.classList.remove('active');
+            viewClient.classList.remove('active');
+            viewDashboard.classList.remove('active');
             
-            const navIndicator = document.getElementById('nav-indicator');
-            const navUserPanel = document.getElementById('nav-user-panel');
-            
-            if (viewName === 'login') {
-                document.getElementById('view-login').classList.add('active');
-                navIndicator.textContent = 'System Login';
-                navIndicator.classList.remove('hidden');
-                navUserPanel.classList.add('hidden');
-                currentUser = null;
-                document.getElementById('login-form').reset();
-            } else {
-                document.getElementById(`view-${viewName}`).classList.add('active');
-                navIndicator.classList.add('hidden');
-                navUserPanel.classList.remove('hidden');
-                document.getElementById('nav-user-name').textContent = currentUser.name;
-                document.getElementById('nav-user-role').textContent = ROLE_LEVELS[currentUser.role]?.label || 'User';
+            btnLogout.classList.toggle('hidden', viewName === 'login');
 
-                if (viewName === 'client') {
-                    document.getElementById('client-display-name').innerHTML = `<i class="ph-fill ph-user"></i> ${currentUser.name}`;
-                    document.getElementById('client-display-location').textContent = currentUser.location;
-                    renderClientButtons();
-                    renderClientAlerts();
-                } else if (viewName === 'dashboard') {
-                    const isAdmin = ROLE_LEVELS[currentUser.role]?.isAdmin;
-                    document.getElementById('tab-accounts').style.display = isAdmin ? 'flex' : 'none';
-                    document.getElementById('tab-buttons').style.display = isAdmin ? 'flex' : 'none';
-                    
-                    // Force Live Alerts view
-                    switchDashTab('alerts');
-                    setAlertFilter('active');
-                    renderDashboardAlerts();
+            if (viewName === 'login') {
+                viewLogin.classList.add('active');
+                navIndicator.textContent = 'System Login';
+            } else if (viewName === 'client') {
+                viewClient.classList.add('active');
+                navIndicator.textContent = `Client: ${currentUser?.location || 'Unknown'}`;
+                if (clientDisplayName) clientDisplayName.querySelector('span').textContent = currentUser.name;
+                if (clientDisplayLocation) clientDisplayLocation.textContent = currentUser.location;
+                renderClientButtons();
+                renderClientAlerts();
+            } else if (viewName === 'dashboard') {
+                viewDashboard.classList.add('active');
+                navIndicator.textContent = 'Operator Dashboard';
+                
+                // Permission Check
+                const roleData = ROLE_MAP[currentUser.role] || ROLE_MAP['operator'];
+                const isFullAdmin = roleData.type === 'admin';
+                
+                document.getElementById('tab-accounts').style.display = isFullAdmin ? 'block' : 'none';
+                document.getElementById('tab-buttons').style.display = isFullAdmin ? 'block' : 'none';
+                
+                // Force reset to the Alerts tab every time the dashboard is loaded
+                switchDashTab('alerts');
+
+                renderDashboardAlerts(); 
+                if(isFullAdmin) {
+                    renderAccountsList();
+                    renderButtonsList();
                 }
             }
+        }
+
+        function switchDashTab(tabName) {
+            dashViewAlerts.classList.add('hidden');
+            dashViewAccounts.classList.add('hidden');
+            dashViewButtons.classList.add('hidden');
+            
+            dashTabs.forEach(t => {
+                t.classList.remove('bg-gray-700', 'text-white');
+                t.classList.add('text-gray-400');
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.add('bg-gray-700', 'text-white');
+            document.getElementById(`tab-${tabName}`).classList.remove('text-gray-400');
+
+            if(tabName === 'alerts') dashViewAlerts.classList.remove('hidden');
+            if(tabName === 'accounts') dashViewAccounts.classList.remove('hidden');
+            if(tabName === 'buttons') dashViewButtons.classList.remove('hidden');
         }
 
         function handleLogin(e) {
             e.preventDefault();
-            const u = document.getElementById('login-username').value.trim();
-            const p = document.getElementById('login-password').value.trim();
-            const err = document.getElementById('login-error');
-            
+            const username = loginUsernameInput.value.trim().toLowerCase();
+            const password = loginPasswordInput.value;
             const users = getDB(USERS_KEY);
-            const user = users[u];
+            const user = users[username];
 
-            if (user && user.pass === p) {
-                err.classList.add('hidden');
+            if (user && user.password === password) {
                 currentUser = user;
-                if (user.role === 'client') {
-                    switchView('client');
-                } else {
-                    switchView('dashboard');
-                }
+                currentUser.username = username;
+                showToast(`Welcome, ${user.name}`, 'success');
+                loginUsernameInput.value = '';
+                loginPasswordInput.value = '';
+
+                const roleType = ROLE_MAP[user.role]?.type || 'operator';
+                if (roleType === 'admin' || roleType === 'operator') switchView('dashboard');
+                else switchView('client');
             } else {
-                err.classList.remove('hidden');
+                showToast('Invalid username or password', 'error');
             }
         }
 
-        function logout() { switchView('login'); }
-
-        function switchDashTab(tabName) {
-            ['alerts', 'accounts', 'buttons'].forEach(t => {
-                document.getElementById(`dash-view-${t}`).classList.add('hidden');
-                document.getElementById(`dash-view-${t}`).classList.remove('flex');
-                document.getElementById(`tab-${t}`).classList.remove('bg-blue-600', 'text-white', 'shadow-md');
-                document.getElementById(`tab-${t}`).classList.add('text-slate-300', 'hover:bg-slate-800');
-            });
-
-            document.getElementById(`tab-${tabName}`).classList.add('bg-blue-600', 'text-white', 'shadow-md');
-            document.getElementById(`tab-${tabName}`).classList.remove('text-slate-300', 'hover:bg-slate-800');
-            document.getElementById(`dash-view-${tabName}`).classList.remove('hidden');
-            document.getElementById(`dash-view-${tabName}`).classList.add('flex');
-
-            if (tabName === 'alerts') renderDashboardAlerts();
-            if (tabName === 'accounts') renderAccounts();
-            if (tabName === 'buttons') renderSettingsButtons();
+        function logout() {
+            currentUser = null;
+            switchView('login');
+            showToast('Logged out successfully', 'info');
         }
 
-        function setAlertFilter(filter) {
-            currentAlertFilter = filter;
+        function renderClientButtons() {
+            if (!clientButtonsContainer) return;
+            const btns = getDB(BTNS_KEY);
+            clientButtonsContainer.innerHTML = '';
             
-            // Style active border on selected metric card
-            const styles = {
-                'active': { el: 'card-filter-active', color: 'border-red-500' },
-                'acknowledged': { el: 'card-filter-acknowledged', color: 'border-amber-500' },
-                'resolved': { el: 'card-filter-resolved', color: 'border-emerald-500' }
+            btns.forEach(btn => {
+                const style = COLOR_MAP[btn.color] || COLOR_MAP['red'];
+                const wrapper = document.createElement('div');
+                wrapper.className = 'w-full';
+                
+                wrapper.innerHTML = `
+                    <button id="trigger-${btn.id}" onclick="triggerSOS('${btn.label}')" class="sos-btn ${style.class} text-white rounded-2xl w-full h-28 sm:h-36 flex flex-col items-center justify-center border border-white/20 transition-all hover:scale-[1.02] active:scale-95 shadow-md">
+                        <i class="ph-fill ${btn.icon} text-3xl sm:text-4xl mb-1.5 sm:mb-2"></i>
+                        <span class="font-bold text-xs sm:text-sm tracking-wide text-center px-1 sm:px-3 leading-tight">${btn.label}</span>
+                    </button>
+                `;
+                clientButtonsContainer.appendChild(wrapper);
+            });
+        }
+
+        function renderClientAlerts() {
+            const container = document.getElementById('client-alerts-container');
+            if (!container) return;
+            
+            const data = getDB(STORAGE_KEY);
+            // Filter to show only alerts made by this specific client account
+            const myAlerts = data.filter(a => a.username === currentUser?.username);
+            
+            container.innerHTML = '';
+            
+            if (myAlerts.length === 0) {
+                container.innerHTML = `<p class="text-sm text-gray-400 text-center py-4 bg-gray-50 rounded-lg">No recent alerts triggered.</p>`;
+                return;
+            }
+            
+            // Show only the latest 5 alerts to keep UI clean
+            myAlerts.slice(0, 5).forEach(alert => {
+                const timeObj = new Date(alert.timestamp);
+                const timeString = timeObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                let statusColor = 'text-red-600 bg-red-50 border-red-200';
+                let statusText = 'Pending Acknowledgment';
+                let handlerText = '';
+                
+                if (alert.status === 'acknowledged') {
+                    statusColor = 'text-yellow-700 bg-yellow-50 border-yellow-200';
+                    statusText = 'Acknowledged & Dispatched';
+                    if(alert.acknowledgedBy) handlerText = `<div class="text-xs text-gray-500 mt-0.5">by Operator: <span class="font-semibold">${alert.acknowledgedBy}</span></div>`;
+                } else if (alert.status === 'resolved') {
+                    statusColor = 'text-green-700 bg-green-50 border-green-200';
+                    statusText = 'Resolved';
+                    if(alert.resolvedBy) handlerText = `<div class="text-xs text-gray-500 mt-0.5">by Operator: <span class="font-semibold">${alert.resolvedBy}</span></div>`;
+                }
+
+                const el = document.createElement('div');
+                el.className = `flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-xl border ${statusColor} shadow-sm`;
+                el.innerHTML = `
+                    <div>
+                        <div class="font-bold text-sm text-gray-800">${alert.typeLabel} <span class="font-medium text-xs text-gray-500 ml-2"><i class="ph ph-clock"></i> ${timeString}</span></div>
+                        <div class="text-xs font-semibold mt-1 flex items-center gap-1">${statusText}</div>
+                    </div>
+                    <div class="mt-2 sm:mt-0 text-right">
+                        ${handlerText}
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function triggerSOS(typeLabel) {
+            if (!currentUser) return;
+            
+            const newAlert = {
+                id: 'SOS-' + Date.now().toString(36).toUpperCase(),
+                username: currentUser.username,
+                name: currentUser.name,
+                location: currentUser.location,
+                typeLabel: typeLabel,
+                timestamp: new Date().toISOString(),
+                status: 'active',
+                acknowledgedBy: null,
+                resolvedBy: null
             };
 
-            ['active', 'acknowledged', 'resolved'].forEach(key => {
-                const card = document.getElementById(styles[key].el);
-                if (key === filter) {
-                    card.classList.add(styles[key].color);
-                    card.classList.remove('border-transparent');
-                } else {
-                    card.classList.remove(styles[key].color);
-                    card.classList.add('border-transparent');
-                }
+            const currentData = getDB(STORAGE_KEY);
+            currentData.unshift(newAlert); 
+            saveDB(STORAGE_KEY, currentData, 'alerts');
+
+            showToast(`"${typeLabel}" Signal Sent!`, 'success');
+        }
+
+        function renderAccountsList() {
+            const tableBody = document.getElementById('accounts-table-body');
+            if(!tableBody) return;
+            
+            const users = getDB(USERS_KEY);
+            tableBody.innerHTML = '';
+
+            // Convert to array and sort by Hierarchy Level
+            const userArray = Object.entries(users).map(([username, details]) => ({ username, ...details }));
+            userArray.sort((a, b) => {
+                const levelA = ROLE_MAP[a.role]?.level || 99;
+                const levelB = ROLE_MAP[b.role]?.level || 99;
+                return levelA - levelB;
             });
 
-            // Update Panel Title
-            const titleEl = document.getElementById('alert-panel-title');
-            if (filter === 'active') titleEl.innerHTML = `<i class="ph-fill ph-siren text-red-500"></i> Active Signals`;
-            else if (filter === 'acknowledged') titleEl.innerHTML = `<i class="ph-fill ph-clock text-amber-500"></i> Dispatched & Acknowledged`;
-            else if (filter === 'resolved') titleEl.innerHTML = `<i class="ph-fill ph-check-circle text-emerald-500"></i> Resolved History`;
+            let currentLevel = -1;
 
-            // Toggle Dropdown Filters
-            const filterPanel = document.getElementById('resolved-filters');
-            filterPanel.style.display = filter === 'resolved' ? 'flex' : 'none';
+            userArray.forEach(user => {
+                const roleData = ROLE_MAP[user.role] || ROLE_MAP['operator'];
+                
+                // Group Header Separators
+                if (roleData.level !== currentLevel) {
+                    currentLevel = roleData.level;
+                    const groupHeader = document.createElement('tr');
+                    groupHeader.className = "bg-gray-50 border-y border-gray-100";
+                    groupHeader.innerHTML = `<td colspan="6" class="px-6 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">${roleData.label}s</td>`;
+                    tableBody.appendChild(groupHeader);
+                }
 
-            renderDashboardAlerts();
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-gray-50 hover:bg-gray-50/50 transition-colors";
+                
+                const isMainAdmin = user.username === 'admin';
+                const actionBtn = isMainAdmin ? 
+                    `<span class="text-xs font-semibold bg-gray-200 text-gray-500 px-2 py-1 rounded">System Default</span>` :
+                    `<button onclick="deleteAccount('${user.username}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded transition-colors" title="Delete Account"><i class="ph ph-trash"></i></button>`;
+
+                const roleBadge = `<span class="${roleData.badge} px-2 py-0.5 rounded text-xs font-bold uppercase">${user.role}</span>`;
+
+                tr.innerHTML = `
+                    <td class="px-6 py-3 font-medium text-gray-800">${user.username}</td>
+                    <td class="px-6 py-3">${roleBadge}</td>
+                    <td class="px-6 py-3 text-gray-500 font-mono text-xs">${user.password}</td>
+                    <td class="px-6 py-3 text-gray-600">${user.name}</td>
+                    <td class="px-6 py-3 text-gray-600">${user.location || 'N/A'}</td>
+                    <td class="px-6 py-3 text-right">${actionBtn}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function createAccount(e) {
+            e.preventDefault();
+            const username = document.getElementById('new-acc-user').value.trim().toLowerCase();
+            const role = document.getElementById('new-acc-role').value;
+            const users = getDB(USERS_KEY);
+
+            if (users[username]) {
+                showToast('Username already exists!', 'error');
+                return;
+            }
+
+            let locationString = 'Command Center';
+            if (role === 'client') {
+                const floor = document.getElementById('new-acc-floor').value;
+                const room = document.getElementById('new-acc-room').value.trim();
+                locationString = `${floor} - ${room}`;
+            }
+
+            users[username] = {
+                role: role,
+                password: document.getElementById('new-acc-pass').value.trim(),
+                name: document.getElementById('new-acc-name').value.trim(),
+                location: locationString
+            };
+
+            saveDB(USERS_KEY, users, 'users');
+            showToast('Account created successfully', 'success');
+            document.getElementById('form-create-account').reset();
+            
+            // Reset visibility
+            if (roleSelect && roleSelect.value !== 'client') {
+                locField.style.display = 'none'; 
+                floorInput.removeAttribute('required');
+                roomInput.removeAttribute('required');
+            }
+            
+            renderAccountsList();
+            closeModal('modal-account');
+        }
+
+        function deleteAccount(username) {
+            const users = getDB(USERS_KEY);
+            if (users[username] && username !== 'admin') {
+                delete users[username];
+                saveDB(USERS_KEY, users, 'users');
+                showToast('Account deleted', 'info');
+                renderAccountsList();
+            } else if (username === 'admin') {
+                showToast('Cannot delete default admin account', 'error');
+            }
+        }
+
+        function renderButtonsList() {
+            const list = document.getElementById('admin-buttons-list');
+            if(!list) return;
+
+            const btns = getDB(BTNS_KEY);
+            list.innerHTML = '';
+
+            btns.forEach(btn => {
+                const style = COLOR_MAP[btn.color] || COLOR_MAP['red'];
+                const card = document.createElement('div');
+                card.className = "flex items-center justify-between p-3 border border-gray-100 rounded-lg shadow-sm bg-white";
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="${style.class} w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0">
+                            <i class="ph-fill ${btn.icon} text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-800 text-sm">${btn.label}</p>
+                            <p class="text-xs text-gray-400 capitalize">${btn.color} theme</p>
+                        </div>
+                    </div>
+                    <button onclick="deleteButton('${btn.id}')" class="text-gray-400 hover:text-red-500 transition-colors p-2"><i class="ph ph-trash"></i></button>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function createButton(e) {
+            e.preventDefault();
+            const btns = getDB(BTNS_KEY);
+            const newBtn = {
+                id: 'btn_' + Date.now(),
+                label: document.getElementById('new-btn-label').value.trim(),
+                color: document.getElementById('new-btn-color').value,
+                icon: document.getElementById('new-btn-icon').value
+            };
+
+            btns.push(newBtn);
+            saveDB(BTNS_KEY, btns, 'btns');
+            showToast('SOS Button deployed to clients', 'success');
+            document.getElementById('form-create-btn').reset();
+            renderButtonsList();
+            if(currentView === 'client') renderClientButtons();
+            closeModal('modal-btn');
+        }
+
+        function deleteButton(id) {
+            let btns = getDB(BTNS_KEY);
+            if (btns.length <= 1) {
+                showToast('Cannot delete last button!', 'warning');
+                return;
+            }
+            btns = btns.filter(b => b.id !== id);
+            saveDB(BTNS_KEY, btns, 'btns');
+            showToast('Button removed', 'info');
+            renderButtonsList();
+            if(currentView === 'client') renderClientButtons();
+        }
+
+        function updateAlertStatus(id, newStatus) {
+            const data = getDB(STORAGE_KEY);
+            const index = data.findIndex(alert => alert.id === id);
+            if (index !== -1) {
+                data[index].status = newStatus;
+                data[index].updatedAt = new Date().toISOString();
+                
+                // Track which operator took the action
+                if (newStatus === 'acknowledged') {
+                    data[index].acknowledgedBy = currentUser.name;
+                } else if (newStatus === 'resolved') {
+                    data[index].resolvedBy = currentUser.name;
+                }
+                
+                saveDB(STORAGE_KEY, data, 'alerts');
+                showToast(`Alert status changed to ${newStatus}`, 'info');
+            }
         }
 
         function renderDashboardAlerts() {
             if (currentView !== 'dashboard') return;
             const data = getDB(STORAGE_KEY);
-            const container = document.getElementById('alerts-container'); 
+            const resolvedContainer = document.getElementById('resolved-container');
+            const activeContainer = document.getElementById('alerts-container'); // reused variable name
             
             let activeCount = 0, ackCount = 0, resolvedCount = 0;
-            const locations = new Set(), operators = new Set();
-            container.innerHTML = ''; 
+            activeContainer.innerHTML = ''; 
+            resolvedContainer.innerHTML = '';
 
-            // Calculate Metrics & Build Filter Sets
+            // Get Current Filter Values
+            const filterLoc = document.getElementById('filter-location').value;
+            const filterOp = document.getElementById('filter-operator').value;
+            
+            // Sets to track unique locations and operators for the dropdowns
+            const locations = new Set();
+            const operators = new Set();
+
+            // Populate active cases first
+            const activeCases = data.filter(a => a.status === 'active' || a.status === 'acknowledged');
+            if (activeCases.length === 0) {
+                activeContainer.innerHTML = `<div class="text-center py-6 text-gray-400"><i class="ph ph-shield-check text-4xl mb-2 opacity-50 block"></i><p class="text-sm">No active signals.</p></div>`;
+            }
+
+            // Loop ALL data to populate counts and filters
             data.forEach(alert => {
                 if (alert.status === 'active') activeCount++;
                 if (alert.status === 'acknowledged') ackCount++;
@@ -513,330 +934,151 @@
                     if(alert.resolvedBy) operators.add(alert.resolvedBy);
                     if(alert.acknowledgedBy) operators.add(alert.acknowledgedBy);
                 }
-            });
 
-            // Apply Filters for the unified list
-            const filterLoc = document.getElementById('filter-location').value;
-            const filterOp = document.getElementById('filter-operator').value;
+                // Render Card Logic
+                const timeObj = new Date(alert.timestamp);
+                const timeString = timeObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                const card = document.createElement('div');
+                card.className = `p-3 sm:p-4 rounded-xl border-l-4 shadow-sm flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 transition-all ${
+                    alert.status === 'active' ? 'bg-white border-red-500' :
+                    alert.status === 'acknowledged' ? 'bg-white border-yellow-500' :
+                    'bg-white border-green-500'
+                }`;
 
-            let visibleAlerts = data.filter(a => a.status === currentAlertFilter);
-            if (currentAlertFilter === 'resolved') {
-                visibleAlerts = visibleAlerts.filter(a => {
-                    const matchLoc = filterLoc === 'all' || a.location === filterLoc;
-                    const matchOp = filterOp === 'all' || (a.resolvedBy === filterOp || a.acknowledgedBy === filterOp);
-                    return matchLoc && matchOp;
-                });
-            }
+                let statusBadge = '', actionButtons = '';
+                const typeLabelHTML = alert.typeLabel ? `<span class="bg-gray-800 text-white text-[10px] px-2 py-0.5 rounded font-bold whitespace-nowrap">${alert.typeLabel}</span>` : '';
 
-            // Populate Filter Dropdowns dynamically
-            if(currentAlertFilter === 'resolved' && document.activeElement.id !== 'filter-location' && document.activeElement.id !== 'filter-operator') {
-                const locSelect = document.getElementById('filter-location');
-                const opSelect = document.getElementById('filter-operator');
-                locSelect.innerHTML = '<option value="all">All Locations</option>';
-                opSelect.innerHTML = '<option value="all">All Operators</option>';
-                locations.forEach(l => locSelect.add(new Option(l, l, false, l===filterLoc)));
-                operators.forEach(o => opSelect.add(new Option(o, o, false, o===filterOp)));
-            }
+                if (alert.status === 'active') {
+                    statusBadge = `<span class="bg-red-100 text-red-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider animate-pulse flex items-center gap-1"><i class="ph-fill ph-siren"></i> NEW</span>`;
+                    actionButtons = `<button onclick="updateAlertStatus('${alert.id}', 'acknowledged')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg shadow-sm text-xs font-bold transition-colors w-full xl:w-auto">Acknowledge</button>`;
+                } else if (alert.status === 'acknowledged') {
+                    statusBadge = `<span class="bg-yellow-100 text-yellow-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1"><i class="ph-fill ph-user-gear"></i> Dispatched</span>`;
+                    actionButtons = `<button onclick="updateAlertStatus('${alert.id}', 'resolved')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg shadow-sm text-xs font-bold transition-colors w-full xl:w-auto">Mark Resolved</button>`;
+                } else {
+                    statusBadge = `<span class="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1"><i class="ph-fill ph-check"></i> Resolved</span>`;
+                    actionButtons = `<span class="text-xs text-gray-500 font-medium px-2"><i class="ph ph-lock-key"></i> Closed Case</span>`;
+                }
+                
+                let handlerInfo = '';
+                if (alert.status === 'acknowledged' && alert.acknowledgedBy) {
+                    handlerInfo = `<div class="mt-2 text-[11px] font-medium text-yellow-800 bg-yellow-100/50 inline-block px-2 py-0.5 rounded shadow-sm"><i class="ph-fill ph-user-circle"></i> Ack by: ${alert.acknowledgedBy}</div>`;
+                } else if (alert.status === 'resolved') {
+                    let resBy = alert.resolvedBy || 'Unknown';
+                    let ackBy = alert.acknowledgedBy || 'Unknown';
+                    handlerInfo = `<div class="mt-2 text-[11px] font-medium text-green-800 bg-green-100/50 inline-block px-2 py-0.5 rounded shadow-sm"><i class="ph-fill ph-user-circle"></i> Ack: ${ackBy} &bull; Res: ${resBy}</div>`;
+                }
 
-            // Render Cards
-            if (visibleAlerts.length === 0) {
-                container.innerHTML = `<div class="text-center py-12 text-slate-400 flex flex-col items-center"><i class="ph-fill ph-check-circle text-5xl mb-3 opacity-30"></i><p class="text-sm font-medium">No signals found in this category.</p></div>`;
-            } else {
-                // Sort to show newest first
-                visibleAlerts.sort((a,b) => b.timestamp - a.timestamp).forEach(alert => {
-                    const timeString = new Date(alert.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const card = document.createElement('div');
-                    
-                    let bgStyle = alert.status === 'active' ? 'border-red-500 bg-white' : alert.status === 'acknowledged' ? 'border-amber-500 bg-white' : 'border-emerald-500 bg-slate-50 opacity-80';
-                    card.className = `p-4 sm:p-5 rounded-2xl border-l-4 shadow-sm flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 transition-all ${bgStyle}`;
-
-                    let typeLabel = alert.typeLabel ? `<span class="bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase whitespace-nowrap">${alert.typeLabel}</span>` : '';
-                    let actionButtons = '', badge = '', handlerInfo = '';
-
-                    if (alert.status === 'active') {
-                        badge = `<span class="bg-red-100 text-red-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase flex items-center gap-1 animate-pulse"><i class="ph-fill ph-siren"></i> NEW</span>`;
-                        actionButtons = `<button onclick="updateAlertStatus('${alert.id}', 'acknowledged')" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all w-full xl:w-auto">Acknowledge</button>`;
-                    } else if (alert.status === 'acknowledged') {
-                        badge = `<span class="bg-amber-100 text-amber-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase flex items-center gap-1"><i class="ph-fill ph-user-gear"></i> Dispatched</span>`;
-                        actionButtons = `<button onclick="updateAlertStatus('${alert.id}', 'resolved')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all w-full xl:w-auto">Mark Resolved</button>`;
-                        handlerInfo = `<div class="mt-2 text-[11px] font-semibold text-amber-800 bg-amber-100/50 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg"><i class="ph-fill ph-user"></i> Ack: ${alert.acknowledgedBy}</div>`;
-                    } else {
-                        badge = `<span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase flex items-center gap-1"><i class="ph-fill ph-check"></i> Resolved</span>`;
-                        handlerInfo = `<div class="mt-2 text-[11px] font-semibold text-emerald-800 bg-emerald-100/50 inline-flex items-center gap-2 px-2.5 py-1 rounded-lg"><span class="flex items-center gap-1"><i class="ph-fill ph-clock"></i> Ack: ${alert.acknowledgedBy||'N/A'}</span> <span class="text-emerald-300">|</span> <span class="flex items-center gap-1"><i class="ph-fill ph-check-circle"></i> Res: ${alert.resolvedBy||'N/A'}</span></div>`;
-                    }
-
-                    card.innerHTML = `
-                        <div class="flex-1 w-full">
-                            <div class="flex flex-wrap items-center gap-2 mb-1.5">
-                                <h4 class="font-bold text-base text-slate-900">${alert.location}</h4>
-                                ${typeLabel} ${badge}
-                            </div>
-                            <div class="text-xs font-medium text-slate-500 flex items-center gap-3">
-                                <span class="flex items-center gap-1"><i class="ph ph-user"></i> ${alert.name}</span>
-                                <span class="flex items-center gap-1"><i class="ph ph-clock"></i> ${timeString}</span>
-                            </div>
-                            ${handlerInfo}
+                card.innerHTML = `
+                    <div class="flex-1 w-full">
+                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                            <h4 class="font-bold text-sm text-gray-900 truncate max-w-[200px]">${alert.location}</h4>
+                            ${typeLabelHTML}
+                            ${statusBadge}
                         </div>
-                        <div class="w-full xl:w-auto mt-2 xl:mt-0 shrink-0">
-                            ${actionButtons}
+                        <div class="text-xs text-gray-500 flex items-center gap-3">
+                            <span class="flex items-center gap-1"><i class="ph ph-user"></i> ${alert.name}</span>
+                            <span class="flex items-center gap-1"><i class="ph ph-clock"></i> ${timeString}</span>
                         </div>
-                    `;
-                    container.appendChild(card);
-                });
-            }
+                        ${handlerInfo}
+                    </div>
+                    <div class="flex items-center gap-2 w-full xl:w-auto mt-2 xl:mt-0 pt-2 xl:pt-0 border-t border-gray-100 xl:border-0 shrink-0">
+                        ${actionButtons}
+                    </div>
+                `;
 
-            // Update stats text
-            document.getElementById('stat-active').textContent = activeCount;
-            document.getElementById('stat-ack').textContent = ackCount;
-            document.getElementById('stat-resolved').textContent = resolvedCount;
-        }
-
-        function updateAlertStatus(id, newStatus) {
-            const data = getDB(STORAGE_KEY);
-            const index = data.findIndex(a => a.id === id);
-            if (index !== -1) {
-                data[index].status = newStatus;
-                if(newStatus === 'acknowledged') data[index].acknowledgedBy = currentUser.username;
-                if(newStatus === 'resolved') data[index].resolvedBy = currentUser.username;
-                saveDB(STORAGE_KEY, data);
-                renderDashboardAlerts();
-            }
-        }
-
-        function renderClientButtons() {
-            const buttons = getDB(BUTTONS_KEY);
-            const container = document.getElementById('client-buttons-container');
-            container.innerHTML = '';
-            
-            buttons.forEach(btn => {
-                const theme = COLOR_MAP[btn.color] || COLOR_MAP['red'];
-                const el = document.createElement('button');
-                el.className = `p-6 rounded-2xl text-white font-bold text-lg text-left transition-all hover:-translate-y-1 active:scale-95 shadow-lg flex flex-col justify-between h-32 ${theme.bg} ${theme.hover} ${theme.shadow}`;
-                el.onclick = () => triggerSOS(btn.label);
-                el.innerHTML = `<i class="ph-fill ph-warning-octagon text-3xl mb-2 opacity-80"></i> <span>${btn.label}</span>`;
-                container.appendChild(el);
-            });
-        }
-
-        function triggerSOS(typeLabel = "Emergency") {
-            const data = getDB(STORAGE_KEY);
-            const newAlert = {
-                id: 'sos_' + Date.now(),
-                timestamp: Date.now(),
-                location: currentUser.location,
-                name: currentUser.name,
-                typeLabel: typeLabel,
-                status: 'active'
-            };
-            data.push(newAlert);
-            saveDB(STORAGE_KEY, data);
-            
-            const btn = event.currentTarget;
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = `<i class="ph-fill ph-check-circle text-3xl mb-2"></i> <span>Signal Sent</span>`;
-            setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
-            
-            renderClientAlerts();
-        }
-
-        function renderClientAlerts() {
-            if (currentView !== 'client') return;
-            const data = getDB(STORAGE_KEY);
-            const container = document.getElementById('client-alerts-container');
-            const myAlerts = data.filter(a => a.location === currentUser.location).sort((a,b) => b.timestamp - a.timestamp);
-            
-            container.innerHTML = '';
-            if(myAlerts.length === 0){
-                container.innerHTML = `<div class="text-center py-6 text-slate-600 text-xs font-medium"><i class="ph ph-list text-2xl mb-1 opacity-50 block"></i>No recent signals</div>`;
-            } else {
-                myAlerts.forEach(alert => {
-                    const time = new Date(alert.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    let statusDiv = '';
-                    
-                    if(alert.status === 'active') statusDiv = `<div class="text-red-400 font-bold flex items-center gap-1 animate-pulse"><i class="ph-fill ph-siren"></i> Active Signal</div>`;
-                    else if(alert.status === 'acknowledged') statusDiv = `<div class="text-amber-400 font-bold flex items-center gap-1"><i class="ph-fill ph-clock"></i> Dispatched (${alert.acknowledgedBy})</div>`;
-                    else statusDiv = `<div class="text-emerald-400 font-bold flex items-center gap-1"><i class="ph-fill ph-check-circle"></i> Resolved</div>`;
-                    
-                    container.innerHTML += `
-                        <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 text-xs">
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="font-bold text-white bg-slate-700 px-2 py-0.5 rounded">${alert.typeLabel}</span>
-                                <span class="text-slate-400">${time}</span>
-                            </div>
-                            ${statusDiv}
-                        </div>
-                    `;
-                });
-            }
-        }
-
-        function toggleLocationFields() {
-            const role = document.getElementById('new-acc-role').value;
-            document.getElementById('field-location').style.display = role === 'client' ? 'block' : 'none';
-        }
-
-        function updateFloorSuggestions() {
-            const users = getDB(USERS_KEY);
-            const datalist = document.getElementById('floor-suggestions');
-            if(!datalist) return;
-            
-            const floors = new Set();
-            Object.values(users).forEach(u => {
-                if(u.role === 'client' && u.location) {
-                    const parts = u.location.split(' - ');
-                    if(parts.length > 0) floors.add(parts[0].trim());
+                // Sorting rendering logic
+                if (alert.status === 'active' || alert.status === 'acknowledged') {
+                    activeContainer.appendChild(card);
+                } else if (alert.status === 'resolved') {
+                    // Apply filters before appending to resolved
+                    const matchLoc = filterLoc === 'all' || alert.location === filterLoc;
+                    const matchOp = filterOp === 'all' || (alert.resolvedBy === filterOp || alert.acknowledgedBy === filterOp);
+                    if (matchLoc && matchOp) resolvedContainer.appendChild(card);
                 }
             });
-            
-            datalist.innerHTML = '';
-            floors.forEach(f => { if(f) datalist.appendChild(new Option(f, f)); });
-        }
 
-        function renderAccounts() {
-            const users = getDB(USERS_KEY);
-            const tbody = document.getElementById('table-accounts');
-            tbody.innerHTML = '';
-
-            const sortedUsers = Object.values(users).sort((a, b) => {
-                const lvlA = ROLE_LEVELS[a.role]?.level || 99;
-                const lvlB = ROLE_LEVELS[b.role]?.level || 99;
-                return lvlA - lvlB;
-            });
-
-            sortedUsers.forEach(user => {
-                const isProtected = user.username === 'admin';
-                const roleInfo = ROLE_LEVELS[user.role] || { label: user.role, level: 99 };
-                const roleBadgeClass = user.role === 'client' ? 'bg-slate-100 text-slate-600' : 'bg-blue-50 text-blue-700 border border-blue-100';
-
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition-colors";
-                tr.innerHTML = `
-                    <td class="px-6 py-4">
-                        <div class="font-bold text-slate-800">${user.username}</div>
-                        <div class="text-xs text-slate-500">${user.role === 'client' ? user.location : 'Command Center'}</div>
-                    </td>
-                    <td class="px-6 py-4 font-medium text-slate-700">${user.name}</td>
-                    <td class="px-6 py-4">
-                        <span class="${roleBadgeClass} text-[11px] px-2.5 py-1 rounded-md font-bold">${roleInfo.label}</span>
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                        ${!isProtected ? `<button onclick="deleteAccount('${user.username}')" class="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition-colors"><i class="ph ph-trash text-lg"></i></button>` : `<span class="text-xs text-slate-400 font-medium px-2"><i class="ph ph-shield-check"></i> Admin</span>`}
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function createAccount(e) {
-            e.preventDefault();
-            const users = getDB(USERS_KEY);
-            const user = document.getElementById('new-acc-user').value.trim();
-            const pass = document.getElementById('new-acc-pass').value.trim();
-            const name = document.getElementById('new-acc-name').value.trim();
-            const role = document.getElementById('new-acc-role').value;
-            
-            if (!user || users[user]) { alert("Username invalid or already exists."); return; }
-
-            let locStr = 'Command Center';
-            if (role === 'client') {
-                const floor = document.getElementById('new-acc-floor').value.trim();
-                const room = document.getElementById('new-acc-room').value.trim();
-                if (!floor || !room) { alert("Floor and Room are required for Client accounts."); return; }
-                locStr = `${floor} - ${room}`;
+            // If resolved list empty after filter
+            if(resolvedContainer.innerHTML === '') {
+                resolvedContainer.innerHTML = `<div class="text-center py-6 text-gray-400"><p class="text-sm">No records match the selected filter.</p></div>`;
             }
 
-            users[user] = { username: user, pass: pass, role: role, name: name, location: locStr };
-            saveDB(USERS_KEY, users);
-            
-            closeModal('modal-account');
-            renderAccounts();
+            // Update DOM Stats
+            statActive.textContent = activeCount;
+            statAck.textContent = ackCount;
+            statResolved.textContent = resolvedCount;
+            document.body.classList.toggle('shadow-[inset_0_0_20px_rgba(239,68,68,0.2)]', activeCount > 0 && currentView === 'dashboard');
+
+            // Update Filter Options Dynamically
+            updateFilterOptions('filter-location', locations, filterLoc);
+            updateFilterOptions('filter-operator', operators, filterOp);
         }
 
-        function deleteAccount(username) {
-            const users = getDB(USERS_KEY);
-            if (users[username] && username !== 'admin') {
-                delete users[username];
-                saveDB(USERS_KEY, users);
-                renderAccounts();
-            }
-        }
-
-        function renderSettingsButtons() {
-            const buttons = getDB(BUTTONS_KEY);
-            const container = document.getElementById('settings-buttons-container');
-            container.innerHTML = '';
+        function updateFilterOptions(selectId, setValues, currentValue) {
+            const select = document.getElementById(selectId);
+            const defaultOption = select.options[0].outerHTML; // Keep the "All ..." option
+            select.innerHTML = defaultOption;
             
-            buttons.forEach(btn => {
-                const theme = COLOR_MAP[btn.color] || COLOR_MAP['red'];
-                const div = document.createElement('div');
-                div.className = `flex justify-between items-center p-4 mb-3 border rounded-2xl shadow-sm bg-white border-l-4 ${theme.border || 'border-slate-300'}`;
-                // Apply theme border hack
-                if(btn.color === 'red') div.classList.add('border-l-red-500');
-                if(btn.color === 'blue') div.classList.add('border-l-blue-500');
-                if(btn.color === 'orange') div.classList.add('border-l-orange-500');
-                if(btn.color === 'purple') div.classList.add('border-l-purple-500');
-                if(btn.color === 'teal') div.classList.add('border-l-teal-500');
-
-                div.innerHTML = `
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-xl ${theme.bg} text-white flex items-center justify-center shadow-md"><i class="ph-fill ph-warning-octagon text-xl"></i></div>
-                        <div>
-                            <div class="font-bold text-slate-800">${btn.label}</div>
-                            <div class="text-xs text-slate-500 capitalize tracking-wide">Theme: ${btn.color}</div>
-                        </div>
-                    </div>
-                    <button onclick="deleteButton('${btn.id}')" class="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-xl transition-all"><i class="ph ph-trash text-lg"></i></button>
-                `;
-                container.appendChild(div);
+            Array.from(setValues).sort().forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                select.appendChild(opt);
             });
+            select.value = currentValue; // Reapply previous selection
         }
 
-        function createButton(e) {
-            e.preventDefault();
-            const data = getDB(BUTTONS_KEY);
-            data.push({
-                id: 'btn_' + Date.now(),
-                label: document.getElementById('new-btn-label').value.trim(),
-                color: document.getElementById('new-btn-color').value
-            });
-            saveDB(BUTTONS_KEY, data);
-            closeModal('modal-button');
-            renderSettingsButtons();
-        }
-
-        function deleteButton(id) {
-            let data = getDB(BUTTONS_KEY);
-            data = data.filter(b => b.id !== id);
-            saveDB(BUTTONS_KEY, data);
-            renderSettingsButtons();
-        }
-
-        function openModal(id) {
-            const modal = document.getElementById(id);
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let bgClass = 'bg-gray-800', icon = 'ph-info';
             
-            // Setup dynamic parts
-            if (id === 'modal-account') {
-                document.getElementById('new-acc-role').value = 'client';
-                toggleLocationFields();
-                updateFloorSuggestions();
-            } else if (id === 'modal-button') {
-                document.getElementById('new-btn-label').value = '';
-                document.getElementById('new-btn-color').value = 'red';
+            if (type === 'success') { bgClass = 'bg-green-600'; icon = 'ph-check-circle'; }
+            if (type === 'error') { bgClass = 'bg-red-600'; icon = 'ph-warning-circle'; }
+            if (type === 'warning') { bgClass = 'bg-yellow-500'; icon = 'ph-warning'; }
+
+            toast.className = `${bgClass} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 transform translate-y-10 opacity-0 transition-all duration-300`;
+            toast.innerHTML = `<i class="ph-fill ${icon} text-xl"></i> <span class="font-medium text-sm">${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Listener for cross-tab local network simulation
+        window.addEventListener('storage', (e) => {
+            if (e.key === STORAGE_KEY) {
+                renderDashboardAlerts();
+                if(currentView === 'client') renderClientAlerts();
             }
-        }
+            else if (e.key === USERS_KEY) renderAccountsList();
+            else if (e.key === BTNS_KEY) {
+                renderButtonsList();
+                if(currentView === 'client') renderClientButtons();
+            }
+        });
 
-        function closeModal(id) {
-            const modal = document.getElementById(id);
-            modal.classList.remove('flex');
-            modal.classList.add('hidden');
-        }
+        // Listener for same-tab updates
+        window.addEventListener('sosDataChanged', (e) => {
+            const t = e.detail?.type;
+            if(t === 'alerts' || !t) {
+                renderDashboardAlerts();
+                if(currentView === 'client') renderClientAlerts();
+            }
+            if(t === 'users') renderAccountsList();
+            if(t === 'btns') {
+                renderButtonsList();
+                if(currentView === 'client') renderClientButtons();
+            }
+        });
 
-        function syncSystem() {
-            if (currentView === 'dashboard') renderDashboardAlerts();
-            if (currentView === 'client') renderClientAlerts();
-        }
+        // App Init
+        initSystemData();
+        renderDashboardAlerts();
+
     </script>
 </body>
 </html>
