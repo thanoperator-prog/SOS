@@ -309,6 +309,23 @@
                         <i class="ph ph-plus-circle text-lg"></i> Add Button
                     </button>
                 </div>
+
+                <!-- Custom Sound Configuration -->
+                <div class="bg-white px-6 py-4 rounded-2xl shadow-sm border border-gray-100 shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h4 class="font-bold text-gray-800 text-sm flex items-center gap-2"><i class="ph-fill ph-speaker-high text-blue-500"></i> Custom Alarm Sound</h4>
+                        <p class="text-xs text-gray-500 mt-0.5">Upload a custom audio file (Max 1.5MB) to replace the default beep.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                        <label class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer border border-gray-200 w-full sm:w-auto text-center">
+                            <span><i class="ph ph-upload-simple"></i> Upload File</span>
+                            <input type="file" id="audio-upload" accept="audio/*" class="hidden" onchange="handleAudioUpload(event)">
+                        </label>
+                        <button onclick="clearAudio()" id="btn-clear-audio" class="hidden bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-xl text-sm font-medium transition-all border border-red-200 w-full sm:w-auto">
+                            Reset Default
+                        </button>
+                    </div>
+                </div>
                 
                 <div class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
                     <div class="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50/30">
@@ -439,6 +456,7 @@
         const STORAGE_KEY = 'sos_system_data'; // Alerts
         const USERS_KEY = 'sos_users';         // Accounts
         const BTNS_KEY = 'sos_btn_types';      // Buttons Configuration
+        const AUDIO_KEY = 'sos_custom_audio';  // Custom Audio Configuration
         
         // UI Elements
         const navIndicator = document.getElementById('nav-indicator');
@@ -460,8 +478,8 @@
 
         let audioEnabled = false;
         let alarmSynth = null;
-        let alarmLoop = null;
-        let isAlarmPlaying = false;
+        let lastActiveCount = 0;
+        let customAudioPlayer = null; // Holds the HTMLAudioElement for uploaded sounds
 
         // Role & Permission Definitions
         const ROLE_MAP = {
@@ -525,21 +543,63 @@
             // Create a simple synth for the siren
             alarmSynth = new Tone.Synth({
                 oscillator: { type: "square" },
-                envelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.8 }
+                envelope: { attack: 0.05, decay: 0.2, sustain: 0.1, release: 0.5 }
             }).toDestination();
             
             // Optional: add a slight distortion for a more alarming sound
-            const dist = new Tone.Distortion(0.4).toDestination();
+            const dist = new Tone.Distortion(0.2).toDestination();
             alarmSynth.connect(dist);
             alarmSynth.volume.value = -10; // Lower volume slightly
+        }
 
-            // Create a loop that toggles between two notes
-            alarmLoop = new Tone.Loop(time => {
-                const note = (Tone.Transport.position.split(':')[1] % 2 === 0) ? "C5" : "F4";
-                alarmSynth.triggerAttackRelease(note, "8n", time);
-            }, "8n");
-            
-            Tone.Transport.start();
+        function initCustomAudio() {
+            const audioData = localStorage.getItem(AUDIO_KEY);
+            const btnClear = document.getElementById('btn-clear-audio');
+            if (audioData) {
+                customAudioPlayer = new Audio(audioData);
+                if (btnClear) btnClear.classList.remove('hidden');
+            } else {
+                customAudioPlayer = null;
+                if (btnClear) btnClear.classList.add('hidden');
+            }
+        }
+
+        function handleAudioUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Limit to 1.5MB to prevent localStorage QuotaExceededError
+            if (file.size > 1.5 * 1024 * 1024) {
+                showToast('File too large! Maximum allowed size is 1.5MB.', 'error');
+                event.target.value = ''; 
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64 = e.target.result;
+                try {
+                    localStorage.setItem(AUDIO_KEY, base64);
+                    initCustomAudio();
+                    showToast('Custom alarm sound saved successfully!', 'success');
+                    
+                    // Trigger a test play if audio is enabled
+                    if (audioEnabled && customAudioPlayer) {
+                        customAudioPlayer.currentTime = 0;
+                        customAudioPlayer.play().catch(() => {});
+                    }
+                } catch(err) {
+                    showToast('Storage full! Please choose a smaller audio file.', 'error');
+                }
+                event.target.value = ''; // reset input
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearAudio() {
+            localStorage.removeItem(AUDIO_KEY);
+            initCustomAudio();
+            showToast('Reverted to default alarm sound.', 'info');
         }
 
         async function toggleAudio() {
@@ -555,32 +615,36 @@
                 status.textContent = 'Sound On';
                 status.classList.add('text-blue-600');
                 
-                // If there are currently active alerts, start the alarm immediately
+                // If there are currently active alerts, play sound immediately
                 const data = getDB(STORAGE_KEY);
                 const activeCases = data.filter(a => a.status === 'active');
-                if (activeCases.length > 0 && !isAlarmPlaying) {
+                if (activeCases.length > 0) {
                     playAlarm();
                 }
             } else {
                 icon.className = 'ph-fill ph-speaker-slash text-lg';
                 status.textContent = 'Sound Off';
                 status.classList.remove('text-blue-600');
-                stopAlarm();
             }
         }
 
         function playAlarm() {
-            if (audioEnabled && alarmLoop && !isAlarmPlaying) {
-                alarmLoop.start(0);
-                isAlarmPlaying = true;
+            if (audioEnabled) {
+                if (customAudioPlayer) {
+                    customAudioPlayer.currentTime = 0;
+                    customAudioPlayer.play().catch(e => console.error("Audio playback blocked:", e));
+                } else if (alarmSynth) {
+                    const now = Tone.now();
+                    // Play 3 sharp beeps, non-looping
+                    alarmSynth.triggerAttackRelease("C6", "16n", now);
+                    alarmSynth.triggerAttackRelease("C6", "16n", now + 0.15);
+                    alarmSynth.triggerAttackRelease("C6", "8n", now + 0.3);
+                }
             }
         }
 
         function stopAlarm() {
-            if (alarmLoop && isAlarmPlaying) {
-                alarmLoop.stop();
-                isAlarmPlaying = false;
-            }
+            // Unused in non-looping setup, kept for compatibility if called elsewhere
         }
 
         const COLOR_MAP = {
@@ -1168,11 +1232,11 @@
             statResolved.textContent = resolvedCount;
             document.body.classList.toggle('shadow-[inset_0_0_20px_rgba(239,68,68,0.2)]', activeCount > 0 && currentView === 'dashboard');
 
-            if (activeCount > 0 && currentView === 'dashboard') {
+            // Play alarm only if the number of active alerts has increased (new alert arrived)
+            if (activeCount > lastActiveCount && currentView === 'dashboard') {
                 playAlarm();
-            } else {
-                stopAlarm();
             }
+            lastActiveCount = activeCount;
 
             // Update Filter Options Dynamically
             updateFilterOptions('filter-location', locations, filterLoc);
@@ -1224,6 +1288,9 @@
                 renderButtonsList();
                 if(currentView === 'client') renderClientButtons();
             }
+            else if (e.key === AUDIO_KEY) {
+                initCustomAudio(); // Sync audio across tabs
+            }
         });
 
         // Listener for same-tab updates
@@ -1242,6 +1309,7 @@
 
         // App Init
         initSystemData();
+        initCustomAudio();
         renderDashboardAlerts();
 
     </script>
