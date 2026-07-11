@@ -374,23 +374,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Floor Level</label>
-                                <select id="new-acc-floor" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
-                                    <option value="">Select Floor</option>
-                                    <option value="1st Floor">1st Floor</option>
-                                    <option value="2nd Floor">2nd Floor</option>
-                                    <option value="3rd Floor">3rd Floor</option>
-                                    <option value="4th Floor">4th Floor</option>
-                                    <option value="5th Floor">5th Floor</option>
-                                    <option value="6th Floor">6th Floor</option>
-                                    <option value="7th Floor">7th Floor</option>
-                                    <option value="8th Floor">8th Floor</option>
-                                    <option value="9th Floor">9th Floor</option>
-                                    <option value="10th Floor">10th Floor</option>
-                                    <option value="Basement">Basement</option>
-                                    <option value="Ground Floor">Ground Floor</option>
-                                    <option value="Roof Deck">Roof Deck</option>
-                                    <option value="Outside Area">Outside Area</option>
-                                </select>
+                                <input type="text" id="new-acc-floor" list="floor-suggestions" placeholder="e.g. 1st Floor" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Room / Area</label>
@@ -447,10 +431,120 @@
             </div>
         </div>
 
+        <!-- Edit Account Modal -->
+        <div id="modal-edit-account" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-modal">
+                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="ph ph-pencil-simple text-blue-500 text-xl"></i> Edit Account</h3>
+                    <button onclick="closeModal('modal-edit-account')" class="text-gray-400 hover:text-gray-700 transition-colors p-1 rounded-md hover:bg-gray-200"><i class="ph ph-x text-lg"></i></button>
+                </div>
+                <form id="form-edit-account" onsubmit="updateAccount(event)" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Username (Login ID)</label>
+                        <input type="text" id="edit-acc-user" disabled class="w-full px-4 py-2.5 bg-gray-100 text-gray-500 border border-gray-200 rounded-xl outline-none cursor-not-allowed text-sm" title="Username cannot be changed">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Account Role</label>
+                        <select id="edit-acc-role" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                            <option value="tss">1. Technical Supervisor (TSS) - Admin</option>
+                            <option value="lol">2. Live Operator Lead (LOL) - Admin</option>
+                            <option value="lot">3. Live Operator Trainer (LOT) - Admin</option>
+                            <option value="lo">4. Live Operator (LO) - Alerts Only</option>
+                            <option value="poc">5. Point of Contact (POC) - Admin</option>
+                            <option value="client">6. Client (Beacon User)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Password</label>
+                        <input type="text" id="edit-acc-pass" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Display Name</label>
+                        <input type="text" id="edit-acc-name" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                    </div>
+                    <div id="edit-field-location" class="hidden">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Floor Level</label>
+                                <input type="text" id="edit-acc-floor" list="floor-suggestions" placeholder="e.g. 1st Floor" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Room / Area</label>
+                                <input type="text" id="edit-acc-room" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pt-2 flex gap-3">
+                        <button type="button" onclick="closeModal('modal-edit-account')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl transition-all font-medium text-sm">Cancel</button>
+                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl transition-all shadow-md hover:shadow-lg text-sm font-bold tracking-wide">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Button Modal -->
+        <div id="modal-edit-btn" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex-col items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-modal">
+                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="ph ph-pencil-simple text-purple-500 text-xl"></i> Edit SOS Beacon</h3>
+                    <button onclick="closeModal('modal-edit-btn')" class="text-gray-400 hover:text-gray-700 transition-colors p-1 rounded-md hover:bg-gray-200"><i class="ph ph-x text-lg"></i></button>
+                </div>
+                <form id="form-edit-btn" onsubmit="updateButton(event)" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Button Label</label>
+                        <input type="text" id="edit-btn-label" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Color Theme</label>
+                        <select id="edit-btn-color" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm">
+                            <option value="red">Red (Critical / Fire)</option>
+                            <option value="blue">Blue (Technical / IT)</option>
+                            <option value="green">Green (Medical / Health)</option>
+                            <option value="yellow">Yellow (Warning / Sub-denial)</option>
+                            <option value="purple">Purple (Other / Custom)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Icon Style</label>
+                        <select id="edit-btn-icon" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm">
+                            <option value="ph-warning">Warning (Triangle)</option>
+                            <option value="ph-siren">Siren (Emergency)</option>
+                            <option value="ph-first-aid">First Aid (Medical)</option>
+                            <option value="ph-shield-warning">Shield (Security)</option>
+                            <option value="ph-wrench">Wrench (Technical)</option>
+                            <option value="ph-fire">Fire</option>
+                        </select>
+                    </div>
+                    <div class="pt-2 flex gap-3">
+                        <button type="button" onclick="closeModal('modal-edit-btn')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl transition-all font-medium text-sm">Cancel</button>
+                        <button type="submit" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl transition-all shadow-md hover:shadow-lg text-sm font-bold tracking-wide">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Confirm Action Modal -->
+        <div id="modal-confirm" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] hidden flex-col items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-modal p-6 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                    <i class="ph-fill ph-warning text-2xl text-yellow-600"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 mb-2" id="confirm-title">Confirm Action</h3>
+                <p class="text-sm text-gray-500 mb-6" id="confirm-message">Are you sure you want to proceed?</p>
+                <div class="flex gap-3">
+                    <button onclick="closeModal('modal-confirm')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl transition-all font-medium text-sm">Cancel</button>
+                    <button onclick="executeConfirm()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl transition-all shadow-md text-sm font-bold">Confirm</button>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <!-- Custom Toast Notification System -->
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+    
+    <!-- Datalist for Floor Suggestions -->
+    <datalist id="floor-suggestions"></datalist>
 
         <script>
         const STORAGE_KEY = 'sos_system_data'; // Alerts
@@ -480,6 +574,24 @@
         let alarmSynth = null;
         let lastActiveCount = 0;
         let customAudioPlayer = null; // Holds the HTMLAudioElement for uploaded sounds
+
+        // Global Confirm Variables & Trackers
+        let pendingAction = null;
+        let editingUsername = null;
+        let editingBtnId = null;
+
+        function confirmAction(title, message, actionCallback) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            pendingAction = actionCallback;
+            openModal('modal-confirm');
+        }
+
+        function executeConfirm() {
+            if(pendingAction) pendingAction();
+            closeModal('modal-confirm');
+            pendingAction = null;
+        }
 
         // Role & Permission Definitions
         const ROLE_MAP = {
@@ -524,6 +636,26 @@
                     locField.style.display = 'block';
                     floorInput.setAttribute('required', 'required');
                     roomInput.setAttribute('required', 'required');
+                }
+            });
+        }
+
+        // Setup Role Change Listener for Account Editing
+        const editRoleSelect = document.getElementById('edit-acc-role');
+        const editLocField = document.getElementById('edit-field-location');
+        const editFloorInput = document.getElementById('edit-acc-floor');
+        const editRoomInput = document.getElementById('edit-acc-room');
+
+        if (editRoleSelect) {
+            editRoleSelect.addEventListener('change', (e) => {
+                if (e.target.value !== 'client') {
+                    editLocField.style.display = 'none';
+                    editFloorInput.removeAttribute('required');
+                    editRoomInput.removeAttribute('required');
+                } else {
+                    editLocField.style.display = 'block';
+                    editFloorInput.setAttribute('required', 'required');
+                    editRoomInput.setAttribute('required', 'required');
                 }
             });
         }
@@ -855,6 +987,20 @@
                 return;
             }
             
+            // Sort to ensure active/acknowledged are at the top, resolved at the bottom
+            myAlerts.sort((a, b) => {
+                const isResolvedA = a.status === 'resolved';
+                const isResolvedB = b.status === 'resolved';
+                
+                // If both share the same status category (both active or both resolved)
+                if (isResolvedA === isResolvedB) {
+                    return new Date(b.timestamp) - new Date(a.timestamp); // Newest first
+                }
+                
+                // If A is resolved, B goes first. If B is resolved, A goes first.
+                return isResolvedA ? 1 : -1;
+            });
+            
             // Show only the latest 5 alerts to keep UI clean
             myAlerts.slice(0, 5).forEach(alert => {
                 const timeObj = new Date(alert.timestamp);
@@ -959,7 +1105,10 @@
                 const isMainAdmin = user.username === 'admin';
                 const actionBtn = isMainAdmin ? 
                     `<span class="text-xs font-semibold bg-gray-200 text-gray-500 px-2 py-1 rounded">System Default</span>` :
-                    `<button onclick="deleteAccount('${user.username}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded transition-colors" title="Delete Account"><i class="ph ph-trash"></i></button>`;
+                    `<div class="flex items-center justify-end gap-1">
+                        <button onclick="openEditAccount('${user.username}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1.5 rounded transition-colors" title="Edit Account"><i class="ph ph-pencil-simple"></i></button>
+                        <button onclick="requestDeleteAccount('${user.username}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded transition-colors" title="Delete Account"><i class="ph ph-trash"></i></button>
+                     </div>`;
 
                 const roleBadge = `<span class="${roleData.badge} px-2 py-0.5 rounded text-xs font-bold uppercase">${user.role}</span>`;
 
@@ -973,58 +1122,137 @@
                 `;
                 tableBody.appendChild(tr);
             });
+            
+            updateFloorSuggestions();
+        }
+
+        function updateFloorSuggestions() {
+            const users = getDB(USERS_KEY);
+            const floors = new Set();
+            Object.values(users).forEach(user => {
+                if (user.role === 'client' && user.location) {
+                    const floor = user.location.split(' - ')[0];
+                    if (floor) floors.add(floor);
+                }
+            });
+            const datalist = document.getElementById('floor-suggestions');
+            if (datalist) {
+                datalist.innerHTML = '';
+                Array.from(floors).sort().forEach(floor => {
+                    const opt = document.createElement('option');
+                    opt.value = floor;
+                    datalist.appendChild(opt);
+                });
+            }
         }
 
         function createAccount(e) {
             e.preventDefault();
-            const username = document.getElementById('new-acc-user').value.trim().toLowerCase();
-            const role = document.getElementById('new-acc-role').value;
-            const users = getDB(USERS_KEY);
-
-            if (users[username]) {
-                showToast('Username already exists!', 'error');
-                return;
-            }
-
-            let locationString = 'Command Center';
-            if (role === 'client') {
-                const floor = document.getElementById('new-acc-floor').value;
-                const room = document.getElementById('new-acc-room').value.trim();
-                locationString = `${floor} - ${room}`;
-            }
-
-            users[username] = {
-                role: role,
-                password: document.getElementById('new-acc-pass').value.trim(),
-                name: document.getElementById('new-acc-name').value.trim(),
-                location: locationString
-            };
-
-            saveDB(USERS_KEY, users, 'users');
-            showToast('Account created successfully', 'success');
-            document.getElementById('form-create-account').reset();
             
-            // Reset visibility
-            if (roleSelect && roleSelect.value !== 'client') {
-                locField.style.display = 'none'; 
-                floorInput.removeAttribute('required');
-                roomInput.removeAttribute('required');
-            }
-            
-            renderAccountsList();
-            closeModal('modal-account');
+            confirmAction('Create Account', 'Are you sure you want to deploy this new account?', () => {
+                const username = document.getElementById('new-acc-user').value.trim().toLowerCase();
+                const role = document.getElementById('new-acc-role').value;
+                const users = getDB(USERS_KEY);
+
+                if (users[username]) {
+                    showToast('Username already exists!', 'error');
+                    return;
+                }
+
+                let locationString = 'Command Center';
+                if (role === 'client') {
+                    const floor = document.getElementById('new-acc-floor').value;
+                    const room = document.getElementById('new-acc-room').value.trim();
+                    locationString = `${floor} - ${room}`;
+                }
+
+                users[username] = {
+                    role: role,
+                    password: document.getElementById('new-acc-pass').value.trim(),
+                    name: document.getElementById('new-acc-name').value.trim(),
+                    location: locationString
+                };
+
+                saveDB(USERS_KEY, users, 'users');
+                showToast('Account created successfully', 'success');
+                document.getElementById('form-create-account').reset();
+                
+                // Reset visibility
+                if (roleSelect && roleSelect.value !== 'client') {
+                    locField.style.display = 'none'; 
+                    floorInput.removeAttribute('required');
+                    roomInput.removeAttribute('required');
+                }
+                
+                renderAccountsList();
+                closeModal('modal-account');
+            });
         }
 
-        function deleteAccount(username) {
+        function openEditAccount(username) {
+            editingUsername = username;
             const users = getDB(USERS_KEY);
-            if (users[username] && username !== 'admin') {
-                delete users[username];
-                saveDB(USERS_KEY, users, 'users');
-                showToast('Account deleted', 'info');
-                renderAccountsList();
-            } else if (username === 'admin') {
-                showToast('Cannot delete default admin account', 'error');
+            const user = users[username];
+            
+            document.getElementById('edit-acc-user').value = username;
+            document.getElementById('edit-acc-role').value = user.role;
+            document.getElementById('edit-acc-pass').value = user.password;
+            document.getElementById('edit-acc-name').value = user.name;
+            
+            if (user.role === 'client') {
+                editLocField.style.display = 'block';
+                const parts = (user.location || '').split(' - ');
+                document.getElementById('edit-acc-floor').value = parts[0] || '';
+                document.getElementById('edit-acc-room').value = parts[1] || '';
+            } else {
+                editLocField.style.display = 'none';
             }
+            
+            openModal('modal-edit-account');
+        }
+
+        function updateAccount(e) {
+            e.preventDefault();
+            
+            confirmAction('Save Changes', 'Are you sure you want to update this account?', () => {
+                const users = getDB(USERS_KEY);
+                const role = document.getElementById('edit-acc-role').value;
+                
+                let locationString = 'Command Center';
+                if (role === 'client') {
+                    const floor = document.getElementById('edit-acc-floor').value;
+                    const room = document.getElementById('edit-acc-room').value.trim();
+                    locationString = `${floor} - ${room}`;
+                }
+
+                users[editingUsername] = {
+                    role: role,
+                    password: document.getElementById('edit-acc-pass').value.trim(),
+                    name: document.getElementById('edit-acc-name').value.trim(),
+                    location: locationString
+                };
+
+                saveDB(USERS_KEY, users, 'users');
+                showToast('Account updated successfully', 'success');
+                closeModal('modal-edit-account');
+                renderAccountsList();
+            });
+        }
+
+        function requestDeleteAccount(username) {
+            if (username === 'admin') {
+                showToast('Cannot delete default admin account', 'error');
+                return;
+            }
+            confirmAction('Delete Account', `Are you sure you want to permanently delete "${username}"?`, () => {
+                const users = getDB(USERS_KEY);
+                if (users[username]) {
+                    delete users[username];
+                    saveDB(USERS_KEY, users, 'users');
+                    showToast('Account deleted', 'info');
+                    renderAccountsList();
+                }
+            });
         }
 
         function renderButtonsList() {
@@ -1048,7 +1276,10 @@
                             <p class="text-xs text-gray-400 capitalize">${btn.color} theme</p>
                         </div>
                     </div>
-                    <button onclick="deleteButton('${btn.id}')" class="text-gray-400 hover:text-red-500 transition-colors p-2"><i class="ph ph-trash"></i></button>
+                    <div class="flex items-center gap-1">
+                        <button onclick="openEditButton('${btn.id}')" class="text-gray-400 hover:text-blue-500 transition-colors p-2"><i class="ph ph-pencil-simple"></i></button>
+                        <button onclick="requestDeleteButton('${btn.id}')" class="text-gray-400 hover:text-red-500 transition-colors p-2"><i class="ph ph-trash"></i></button>
+                    </div>
                 `;
                 list.appendChild(card);
             });
@@ -1056,34 +1287,74 @@
 
         function createButton(e) {
             e.preventDefault();
-            const btns = getDB(BTNS_KEY);
-            const newBtn = {
-                id: 'btn_' + Date.now(),
-                label: document.getElementById('new-btn-label').value.trim(),
-                color: document.getElementById('new-btn-color').value,
-                icon: document.getElementById('new-btn-icon').value
-            };
+            
+            confirmAction('Create Beacon', 'Are you sure you want to deploy this new SOS Beacon to all clients?', () => {
+                const btns = getDB(BTNS_KEY);
+                const newBtn = {
+                    id: 'btn_' + Date.now(),
+                    label: document.getElementById('new-btn-label').value.trim(),
+                    color: document.getElementById('new-btn-color').value,
+                    icon: document.getElementById('new-btn-icon').value
+                };
 
-            btns.push(newBtn);
-            saveDB(BTNS_KEY, btns, 'btns');
-            showToast('SOS Button deployed to clients', 'success');
-            document.getElementById('form-create-btn').reset();
-            renderButtonsList();
-            if(currentView === 'client') renderClientButtons();
-            closeModal('modal-btn');
+                btns.push(newBtn);
+                saveDB(BTNS_KEY, btns, 'btns');
+                showToast('SOS Button deployed to clients', 'success');
+                document.getElementById('form-create-btn').reset();
+                renderButtonsList();
+                if(currentView === 'client') renderClientButtons();
+                closeModal('modal-btn');
+            });
         }
 
-        function deleteButton(id) {
+        function openEditButton(id) {
+            editingBtnId = id;
+            const btns = getDB(BTNS_KEY);
+            const btn = btns.find(b => b.id === id);
+            
+            if (btn) {
+                document.getElementById('edit-btn-label').value = btn.label;
+                document.getElementById('edit-btn-color').value = btn.color;
+                document.getElementById('edit-btn-icon').value = btn.icon;
+                openModal('modal-edit-btn');
+            }
+        }
+
+        function updateButton(e) {
+            e.preventDefault();
+
+            confirmAction('Update Beacon', 'Are you sure you want to update this SOS Beacon for all clients?', () => {
+                const btns = getDB(BTNS_KEY);
+                const index = btns.findIndex(b => b.id === editingBtnId);
+                
+                if (index !== -1) {
+                    btns[index].label = document.getElementById('edit-btn-label').value.trim();
+                    btns[index].color = document.getElementById('edit-btn-color').value;
+                    btns[index].icon = document.getElementById('edit-btn-icon').value;
+                    
+                    saveDB(BTNS_KEY, btns, 'btns');
+                    showToast('SOS Button updated', 'success');
+                    closeModal('modal-edit-btn');
+                    renderButtonsList();
+                    if(currentView === 'client') renderClientButtons();
+                }
+            });
+        }
+
+        function requestDeleteButton(id) {
             let btns = getDB(BTNS_KEY);
             if (btns.length <= 1) {
                 showToast('Cannot delete last button!', 'warning');
                 return;
             }
-            btns = btns.filter(b => b.id !== id);
-            saveDB(BTNS_KEY, btns, 'btns');
-            showToast('Button removed', 'info');
-            renderButtonsList();
-            if(currentView === 'client') renderClientButtons();
+            
+            confirmAction('Delete Beacon', 'Are you sure you want to permanently delete this SOS Beacon?', () => {
+                btns = btns.filter(b => b.id !== id);
+                saveDB(BTNS_KEY, btns, 'btns');
+                showToast('Button removed', 'info');
+                renderButtonsList();
+                if(currentView === 'client') renderClientButtons();
+            });
         }
 
         function updateAlertStatus(id, newStatus) {
@@ -1132,6 +1403,10 @@
             if (activeCases.length === 0) {
                 activeContainer.innerHTML = `<div class="text-center py-6 text-gray-400"><i class="ph ph-shield-check text-4xl mb-2 opacity-50 block"></i><p class="text-sm">No active signals.</p></div>`;
             }
+
+            const activeNodes = [];
+            const ackNodes = [];
+            const resolvedNodes = [];
 
             // Loop ALL data to populate counts and filters
             data.forEach(alert => {
@@ -1208,18 +1483,25 @@
                 `;
 
                 // Sorting rendering logic
-                if (alert.status === 'active' || alert.status === 'acknowledged') {
-                    activeContainer.appendChild(card);
+                if (alert.status === 'active') {
+                    activeNodes.push(card);
+                } else if (alert.status === 'acknowledged') {
+                    ackNodes.push(card);
                 } else if (alert.status === 'resolved') {
                     const matchLoc = filterLoc === 'all' || alert.location === filterLoc;
                     const matchOp = filterOp === 'all' || (alert.resolvedBy === filterOp || alert.acknowledgedBy === filterOp);
                     const matchRoleRule = isFullAdmin || alert.acknowledgedBy === currentUser?.name || alert.resolvedBy === currentUser?.name;
                     
                     if (matchLoc && matchOp && matchRoleRule) {
-                        resolvedContainer.appendChild(card);
+                        resolvedNodes.push(card);
                     }
                 }
             });
+
+            // Append nodes in priority order: Active first, then Acknowledged
+            activeNodes.forEach(node => activeContainer.appendChild(node));
+            ackNodes.forEach(node => activeContainer.appendChild(node));
+            resolvedNodes.forEach(node => resolvedContainer.appendChild(node));
 
             // If resolved list empty after filter
             if(resolvedContainer.innerHTML === '') {
