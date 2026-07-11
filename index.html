@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -175,6 +176,10 @@
                 </div>
 
                 <div class="flex items-center gap-4 self-end lg:self-auto">
+                    <button id="btn-audio-toggle" onclick="toggleAudio()" class="hidden text-xs sm:text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 hover:bg-gray-200 transition-colors" title="Toggle Alarm Sound">
+                        <i id="audio-icon" class="ph-fill ph-speaker-slash text-lg"></i>
+                        <span id="audio-status" class="hidden sm:inline">Sound Off</span>
+                    </button>
                     <div class="flex items-center gap-2 text-xs font-medium bg-gray-800/80 px-3 py-1.5 rounded-full border border-gray-700 shadow-inner text-gray-300">
                         <span class="relative flex h-2.5 w-2.5">
                           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -212,11 +217,17 @@
                     </div>
                 </div>
 
-                <!-- Alerts Split View -->
-                <div class="flex-1 flex flex-col lg:flex-row gap-4 p-4 sm:p-6 pt-0 overflow-hidden">
+                <!-- Alerts Sub-tabs -->
+                <div class="px-4 sm:px-6 shrink-0 flex gap-4 border-b border-gray-200">
+                    <button onclick="switchAlertTab('active')" id="subtab-active" class="px-4 py-2 text-sm font-bold text-blue-600 border-b-2 border-blue-600 transition-colors focus:outline-none">Active & Dispatched</button>
+                    <button onclick="switchAlertTab('resolved')" id="subtab-resolved" class="px-4 py-2 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 transition-colors focus:outline-none">Resolved History</button>
+                </div>
+
+                <!-- Alerts Tabbed View -->
+                <div class="flex-1 flex flex-col gap-4 p-4 sm:p-6 pt-4 overflow-hidden">
                     
                     <!-- Active & Dispatched Panel -->
-                    <div class="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div id="panel-active" class="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                         <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 font-bold text-gray-800 flex justify-between items-center shrink-0">
                             <span class="flex items-center gap-2"><i class="ph-fill ph-siren text-red-500"></i> Active Signals</span>
                         </div>
@@ -226,7 +237,7 @@
                     </div>
 
                     <!-- Resolved History Panel -->
-                    <div class="flex-1 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div id="panel-resolved" class="hidden flex-1 flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                         <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 font-bold text-gray-800 flex justify-between items-center flex-wrap gap-2 shrink-0">
                             <span class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-green-500"></i> Resolved History</span>
                             
@@ -424,7 +435,7 @@
     <!-- Custom Toast Notification System -->
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
-    <script>
+        <script>
         const STORAGE_KEY = 'sos_system_data'; // Alerts
         const USERS_KEY = 'sos_users';         // Accounts
         const BTNS_KEY = 'sos_btn_types';      // Buttons Configuration
@@ -446,6 +457,11 @@
         const statActive = document.getElementById('stat-active');
         const statAck = document.getElementById('stat-ack');
         const statResolved = document.getElementById('stat-resolved');
+
+        let audioEnabled = false;
+        let alarmSynth = null;
+        let alarmLoop = null;
+        let isAlarmPlaying = false;
 
         // Role & Permission Definitions
         const ROLE_MAP = {
@@ -503,6 +519,70 @@
         let currentView = 'login';
         let currentUser = null;
 
+        function initAudio() {
+            if (alarmSynth) return;
+            
+            // Create a simple synth for the siren
+            alarmSynth = new Tone.Synth({
+                oscillator: { type: "square" },
+                envelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.8 }
+            }).toDestination();
+            
+            // Optional: add a slight distortion for a more alarming sound
+            const dist = new Tone.Distortion(0.4).toDestination();
+            alarmSynth.connect(dist);
+            alarmSynth.volume.value = -10; // Lower volume slightly
+
+            // Create a loop that toggles between two notes
+            alarmLoop = new Tone.Loop(time => {
+                const note = (Tone.Transport.position.split(':')[1] % 2 === 0) ? "C5" : "F4";
+                alarmSynth.triggerAttackRelease(note, "8n", time);
+            }, "8n");
+            
+            Tone.Transport.start();
+        }
+
+        async function toggleAudio() {
+            await Tone.start(); // Required by browsers to unlock audio
+            initAudio();
+            
+            audioEnabled = !audioEnabled;
+            const icon = document.getElementById('audio-icon');
+            const status = document.getElementById('audio-status');
+            
+            if (audioEnabled) {
+                icon.className = 'ph-fill ph-speaker-high text-lg text-blue-600';
+                status.textContent = 'Sound On';
+                status.classList.add('text-blue-600');
+                
+                // If there are currently active alerts, start the alarm immediately
+                const data = getDB(STORAGE_KEY);
+                const activeCases = data.filter(a => a.status === 'active');
+                if (activeCases.length > 0 && !isAlarmPlaying) {
+                    playAlarm();
+                }
+            } else {
+                icon.className = 'ph-fill ph-speaker-slash text-lg';
+                status.textContent = 'Sound Off';
+                status.classList.remove('text-blue-600');
+                stopAlarm();
+            }
+        }
+
+        function playAlarm() {
+            if (audioEnabled && alarmLoop && !isAlarmPlaying) {
+                alarmLoop.start(0);
+                isAlarmPlaying = true;
+            }
+        }
+
+        function stopAlarm() {
+            if (alarmLoop && isAlarmPlaying) {
+                alarmLoop.stop();
+                isAlarmPlaying = false;
+            }
+        }
+
         const COLOR_MAP = {
             'red': { class: 'bg-red-600 hover:bg-red-700 shadow-[0_0_20px_rgba(239,68,68,0.5)]', hex: '#ef4444' },
             'blue': { class: 'bg-blue-600 hover:bg-blue-700 shadow-[0_0_20px_rgba(37,99,235,0.5)]', hex: '#3b82f6' },
@@ -510,6 +590,24 @@
             'yellow': { class: 'bg-yellow-500 hover:bg-yellow-600 shadow-[0_0_20px_rgba(234,179,8,0.5)]', hex: '#eab308' },
             'purple': { class: 'bg-purple-600 hover:bg-purple-700 shadow-[0_0_20px_rgba(147,51,234,0.5)]', hex: '#a855f7' }
         };
+
+        const THEME_CLASSES = {
+            'red': { border: 'border-red-500', badge: 'bg-red-100 text-red-700' },
+            'blue': { border: 'border-blue-500', badge: 'bg-blue-100 text-blue-700' },
+            'green': { border: 'border-green-500', badge: 'bg-green-100 text-green-700' },
+            'yellow': { border: 'border-yellow-500', badge: 'bg-yellow-100 text-yellow-700' },
+            'purple': { border: 'border-purple-500', badge: 'bg-purple-100 text-purple-700' }
+        };
+
+        function getDuration(startIso, endIso) {
+            if(!startIso || !endIso) return 'N/A';
+            const diff = Math.floor((new Date(endIso) - new Date(startIso)) / 1000);
+            if(diff < 0) return '0s';
+            if(diff < 60) return `${diff}s`;
+            const m = Math.floor(diff / 60);
+            const s = diff % 60;
+            return `${m}m ${s}s`;
+        }
 
         function initSystemData() {
             if (!localStorage.getItem(USERS_KEY)) {
@@ -549,6 +647,11 @@
             viewDashboard.classList.remove('active');
             
             btnLogout.classList.toggle('hidden', viewName === 'login');
+            
+            const audioBtn = document.getElementById('btn-audio-toggle');
+            if (audioBtn) {
+                audioBtn.classList.toggle('hidden', viewName !== 'dashboard');
+            }
 
             if (viewName === 'login') {
                 viewLogin.classList.add('active');
@@ -600,6 +703,31 @@
             if(tabName === 'buttons') dashViewButtons.classList.remove('hidden');
         }
 
+        function switchAlertTab(tabName) {
+            const panelActive = document.getElementById('panel-active');
+            const panelResolved = document.getElementById('panel-resolved');
+            const btnActive = document.getElementById('subtab-active');
+            const btnResolved = document.getElementById('subtab-resolved');
+
+            if (tabName === 'active') {
+                panelActive.classList.remove('hidden');
+                panelActive.classList.add('flex');
+                panelResolved.classList.add('hidden');
+                panelResolved.classList.remove('flex');
+                
+                btnActive.className = 'px-4 py-2 text-sm font-bold text-blue-600 border-b-2 border-blue-600 transition-colors focus:outline-none';
+                btnResolved.className = 'px-4 py-2 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 transition-colors focus:outline-none';
+            } else {
+                panelResolved.classList.remove('hidden');
+                panelResolved.classList.add('flex');
+                panelActive.classList.add('hidden');
+                panelActive.classList.remove('flex');
+                
+                btnResolved.className = 'px-4 py-2 text-sm font-bold text-blue-600 border-b-2 border-blue-600 transition-colors focus:outline-none';
+                btnActive.className = 'px-4 py-2 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 transition-colors focus:outline-none';
+            }
+        }
+
         function handleLogin(e) {
             e.preventDefault();
             const username = loginUsernameInput.value.trim().toLowerCase();
@@ -624,7 +752,7 @@
 
         function logout() {
             currentUser = null;
-            switchView('login');
+            stopAlarm();            switchView('login');
             showToast('Logged out successfully', 'info');
         }
 
@@ -639,7 +767,7 @@
                 wrapper.className = 'w-full';
                 
                 wrapper.innerHTML = `
-                    <button id="trigger-${btn.id}" onclick="triggerSOS('${btn.label}')" class="sos-btn ${style.class} text-white rounded-2xl w-full h-28 sm:h-36 flex flex-col items-center justify-center border border-white/20 transition-all hover:scale-[1.02] active:scale-95 shadow-md">
+                    <button id="trigger-${btn.id}" onclick="triggerSOS('${btn.label}', '${btn.color}')" class="sos-btn ${style.class} text-white rounded-2xl w-full h-28 sm:h-36 flex flex-col items-center justify-center border border-white/20 transition-all hover:scale-[1.02] active:scale-95 shadow-md">
                         <i class="ph-fill ${btn.icon} text-3xl sm:text-4xl mb-1.5 sm:mb-2"></i>
                         <span class="font-bold text-xs sm:text-sm tracking-wide text-center px-1 sm:px-3 leading-tight">${btn.label}</span>
                     </button>
@@ -675,21 +803,33 @@
                 if (alert.status === 'acknowledged') {
                     statusColor = 'text-yellow-700 bg-yellow-50 border-yellow-200';
                     statusText = 'Acknowledged & Dispatched';
-                    if(alert.acknowledgedBy) handlerText = `<div class="text-xs text-gray-500 mt-0.5">by Operator: <span class="font-semibold">${alert.acknowledgedBy}</span></div>`;
+                    handlerText = `
+                        <div class="text-xs text-gray-500 mb-2">Operator: <span class="font-semibold text-gray-700">${alert.acknowledgedBy}</span></div>
+                        <button onclick="updateAlertStatus('${alert.id}', 'resolved')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl shadow-md text-xs font-bold transition-all w-full sm:w-auto flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-check"></i> Mark Resolved
+                        </button>
+                    `;
                 } else if (alert.status === 'resolved') {
-                    statusColor = 'text-green-700 bg-green-50 border-green-200';
+                    statusColor = 'text-green-700 bg-green-50 border-green-200 opacity-80';
                     statusText = 'Resolved';
-                    if(alert.resolvedBy) handlerText = `<div class="text-xs text-gray-500 mt-0.5">by Operator: <span class="font-semibold">${alert.resolvedBy}</span></div>`;
+                    let totalDur = getDuration(alert.timestamp, alert.resolvedAt);
+                    handlerText = `
+                        <div class="text-[11px] text-gray-500 mb-1">Operator: <span class="font-semibold text-gray-700">${alert.acknowledgedBy}</span></div>
+                        <div class="text-[11px] text-gray-500 flex items-center justify-end gap-1"><i class="ph ph-clock"></i> Total Time: ${totalDur}</div>
+                    `;
                 }
 
                 const el = document.createElement('div');
-                el.className = `flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-xl border ${statusColor} shadow-sm`;
+                el.className = `flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-xl border-l-4 shadow-sm ${statusColor}`;
                 el.innerHTML = `
-                    <div>
-                        <div class="font-bold text-sm text-gray-800">${alert.typeLabel} <span class="font-medium text-xs text-gray-500 ml-2"><i class="ph ph-clock"></i> ${timeString}</span></div>
+                    <div class="mb-3 sm:mb-0 w-full">
+                        <div class="font-bold text-sm text-gray-800 flex items-center justify-between w-full">
+                            <span>${alert.typeLabel}</span>
+                            <span class="font-medium text-[11px] text-gray-500"><i class="ph ph-clock"></i> ${timeString}</span>
+                        </div>
                         <div class="text-xs font-semibold mt-1 flex items-center gap-1">${statusText}</div>
                     </div>
-                    <div class="mt-2 sm:mt-0 text-right">
+                    <div class="sm:ml-4 sm:pl-4 sm:border-l sm:border-gray-200/50 text-right w-full sm:w-auto shrink-0 flex flex-col items-end">
                         ${handlerText}
                     </div>
                 `;
@@ -697,7 +837,7 @@
             });
         }
 
-        function triggerSOS(typeLabel) {
+        function triggerSOS(typeLabel, btnColor) {
             if (!currentUser) return;
             
             const newAlert = {
@@ -706,6 +846,7 @@
                 name: currentUser.name,
                 location: currentUser.location,
                 typeLabel: typeLabel,
+                btnColor: btnColor || 'red',
                 timestamp: new Date().toISOString(),
                 status: 'active',
                 acknowledgedBy: null,
@@ -891,8 +1032,10 @@
                 // Track which operator took the action
                 if (newStatus === 'acknowledged') {
                     data[index].acknowledgedBy = currentUser.name;
+                    data[index].acknowledgedAt = new Date().toISOString();
                 } else if (newStatus === 'resolved') {
                     data[index].resolvedBy = currentUser.name;
+                    data[index].resolvedAt = new Date().toISOString();
                 }
                 
                 saveDB(STORAGE_KEY, data, 'alerts');
@@ -917,6 +1060,8 @@
             // Sets to track unique locations and operators for the dropdowns
             const locations = new Set();
             const operators = new Set();
+            
+            const isFullAdmin = ROLE_MAP[currentUser?.role]?.type === 'admin';
 
             // Populate active cases first
             const activeCases = data.filter(a => a.status === 'active' || a.status === 'acknowledged');
@@ -929,44 +1074,55 @@
                 if (alert.status === 'active') activeCount++;
                 if (alert.status === 'acknowledged') ackCount++;
                 if (alert.status === 'resolved') {
-                    resolvedCount++;
-                    if(alert.location) locations.add(alert.location);
-                    if(alert.resolvedBy) operators.add(alert.resolvedBy);
-                    if(alert.acknowledgedBy) operators.add(alert.acknowledgedBy);
+                    
+                    const matchOperatorRule = isFullAdmin || alert.acknowledgedBy === currentUser?.name || alert.resolvedBy === currentUser?.name;
+                    
+                    if (matchOperatorRule) {
+                        resolvedCount++;
+                        if(alert.location) locations.add(alert.location);
+                        if(alert.resolvedBy) operators.add(alert.resolvedBy);
+                        if(alert.acknowledgedBy) operators.add(alert.acknowledgedBy);
+                    }
                 }
 
                 // Render Card Logic
                 const timeObj = new Date(alert.timestamp);
                 const timeString = timeObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 
+                const theme = THEME_CLASSES[alert.btnColor] || THEME_CLASSES['red'];
+                
                 const card = document.createElement('div');
-                card.className = `p-3 sm:p-4 rounded-xl border-l-4 shadow-sm flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 transition-all ${
-                    alert.status === 'active' ? 'bg-white border-red-500' :
-                    alert.status === 'acknowledged' ? 'bg-white border-yellow-500' :
-                    'bg-white border-green-500'
-                }`;
+                card.className = `p-3 sm:p-4 rounded-xl border-l-[6px] shadow-sm flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 transition-all bg-white ${theme.border} ${alert.status === 'resolved' ? 'opacity-75 hover:opacity-100' : ''}`;
 
-                let statusBadge = '', actionButtons = '';
+                let statusBadge = '', actionButtons = '', handlerInfo = '';
                 const typeLabelHTML = alert.typeLabel ? `<span class="bg-gray-800 text-white text-[10px] px-2 py-0.5 rounded font-bold whitespace-nowrap">${alert.typeLabel}</span>` : '';
 
                 if (alert.status === 'active') {
-                    statusBadge = `<span class="bg-red-100 text-red-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider animate-pulse flex items-center gap-1"><i class="ph-fill ph-siren"></i> NEW</span>`;
+                    statusBadge = `<span class="${theme.badge} text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider animate-pulse flex items-center gap-1"><i class="ph-fill ph-siren"></i> NEW</span>`;
                     actionButtons = `<button onclick="updateAlertStatus('${alert.id}', 'acknowledged')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg shadow-sm text-xs font-bold transition-colors w-full xl:w-auto">Acknowledge</button>`;
                 } else if (alert.status === 'acknowledged') {
-                    statusBadge = `<span class="bg-yellow-100 text-yellow-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1"><i class="ph-fill ph-user-gear"></i> Dispatched</span>`;
-                    actionButtons = `<button onclick="updateAlertStatus('${alert.id}', 'resolved')" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg shadow-sm text-xs font-bold transition-colors w-full xl:w-auto">Mark Resolved</button>`;
+                    let ackDur = getDuration(alert.timestamp, alert.acknowledgedAt);
+                    statusBadge = `<span class="${theme.badge} text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1"><i class="ph-fill ph-user-gear"></i> Dispatched</span>`;
+                    actionButtons = `<span class="text-xs text-gray-500 font-medium px-2 italic"><i class="ph ph-hourglass-high animate-pulse"></i> Client to Resolve</span>`;
+                    handlerInfo = `<div class="mt-2 text-[11px] font-medium text-gray-700 bg-gray-100 inline-block px-2 py-1 rounded shadow-sm border border-gray-200"><i class="ph-fill ph-user-circle text-blue-500"></i> Ack by Operator: <strong>${alert.acknowledgedBy}</strong> <span class="ml-1 text-gray-400 font-normal">(Response Time: ${ackDur})</span></div>`;
                 } else {
-                    statusBadge = `<span class="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1"><i class="ph-fill ph-check"></i> Resolved</span>`;
-                    actionButtons = `<span class="text-xs text-gray-500 font-medium px-2"><i class="ph ph-lock-key"></i> Closed Case</span>`;
-                }
-                
-                let handlerInfo = '';
-                if (alert.status === 'acknowledged' && alert.acknowledgedBy) {
-                    handlerInfo = `<div class="mt-2 text-[11px] font-medium text-yellow-800 bg-yellow-100/50 inline-block px-2 py-0.5 rounded shadow-sm"><i class="ph-fill ph-user-circle"></i> Ack by: ${alert.acknowledgedBy}</div>`;
-                } else if (alert.status === 'resolved') {
-                    let resBy = alert.resolvedBy || 'Unknown';
-                    let ackBy = alert.acknowledgedBy || 'Unknown';
-                    handlerInfo = `<div class="mt-2 text-[11px] font-medium text-green-800 bg-green-100/50 inline-block px-2 py-0.5 rounded shadow-sm"><i class="ph-fill ph-user-circle"></i> Ack: ${ackBy} &bull; Res: ${resBy}</div>`;
+                    let ackDur = getDuration(alert.timestamp, alert.acknowledgedAt);
+                    let resDur = getDuration(alert.acknowledgedAt, alert.resolvedAt);
+                    
+                    statusBadge = `<span class="${theme.badge} text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider flex items-center gap-1"><i class="ph-fill ph-check"></i> Resolved</span>`;
+                    
+                    handlerInfo = `
+                        <div class="mt-2 flex flex-col gap-1">
+                            <div class="text-[11px] font-medium text-gray-700 bg-gray-100 inline-block px-2 py-1 rounded shadow-sm border border-gray-200 w-fit">
+                                <i class="ph-fill ph-user-circle text-blue-500"></i> Operator: <strong>${alert.acknowledgedBy || 'Unknown'}</strong> 
+                            </div>
+                            <div class="text-[10px] text-gray-500 flex gap-2 items-center font-medium">
+                                <span title="Time taken to Acknowledge"><i class="ph-fill ph-stopwatch text-gray-400"></i> Ack Time: <span class="text-gray-700">${ackDur}</span></span>
+                                <span class="text-gray-300">|</span>
+                                <span title="Time taken from Ack to Resolve"><i class="ph-fill ph-flag-checkered text-gray-400"></i> Action Time: <span class="text-gray-700">${resDur}</span></span>
+                            </div>
+                        </div>
+                    `;
                 }
 
                 card.innerHTML = `
@@ -976,13 +1132,13 @@
                             ${typeLabelHTML}
                             ${statusBadge}
                         </div>
-                        <div class="text-xs text-gray-500 flex items-center gap-3">
-                            <span class="flex items-center gap-1"><i class="ph ph-user"></i> ${alert.name}</span>
-                            <span class="flex items-center gap-1"><i class="ph ph-clock"></i> ${timeString}</span>
+                        <div class="text-xs text-gray-500 flex items-center gap-3 mt-1">
+                            <span class="flex items-center gap-1 font-medium"><i class="ph-fill ph-user"></i> ${alert.name}</span>
+                            <span class="flex items-center gap-1"><i class="ph-fill ph-clock"></i> ${timeString}</span>
                         </div>
                         ${handlerInfo}
                     </div>
-                    <div class="flex items-center gap-2 w-full xl:w-auto mt-2 xl:mt-0 pt-2 xl:pt-0 border-t border-gray-100 xl:border-0 shrink-0">
+                    <div class="flex items-center justify-end gap-2 w-full xl:w-auto mt-3 xl:mt-0 pt-3 xl:pt-0 border-t border-gray-100 xl:border-0 shrink-0">
                         ${actionButtons}
                     </div>
                 `;
@@ -991,10 +1147,13 @@
                 if (alert.status === 'active' || alert.status === 'acknowledged') {
                     activeContainer.appendChild(card);
                 } else if (alert.status === 'resolved') {
-                    // Apply filters before appending to resolved
                     const matchLoc = filterLoc === 'all' || alert.location === filterLoc;
                     const matchOp = filterOp === 'all' || (alert.resolvedBy === filterOp || alert.acknowledgedBy === filterOp);
-                    if (matchLoc && matchOp) resolvedContainer.appendChild(card);
+                    const matchRoleRule = isFullAdmin || alert.acknowledgedBy === currentUser?.name || alert.resolvedBy === currentUser?.name;
+                    
+                    if (matchLoc && matchOp && matchRoleRule) {
+                        resolvedContainer.appendChild(card);
+                    }
                 }
             });
 
@@ -1008,6 +1167,12 @@
             statAck.textContent = ackCount;
             statResolved.textContent = resolvedCount;
             document.body.classList.toggle('shadow-[inset_0_0_20px_rgba(239,68,68,0.2)]', activeCount > 0 && currentView === 'dashboard');
+
+            if (activeCount > 0 && currentView === 'dashboard') {
+                playAlarm();
+            } else {
+                stopAlarm();
+            }
 
             // Update Filter Options Dynamically
             updateFilterOptions('filter-location', locations, filterLoc);
