@@ -654,6 +654,10 @@
         let unsubUsers = null, unsubBtns = null, unsubAlerts = null;
         let isSystemReady = false;
 
+        // Heartbeat & Monitor Timers
+        let heartbeatTimer = null;
+        let monitorTimer = null;
+
         // UI Elements
         const navIndicator = document.getElementById('nav-indicator');
         const btnLogout = document.getElementById('btn-logout');
@@ -926,6 +930,11 @@
         window.logout = function() {
             currentUser = null;
             stopAlarm();            
+            
+            // Clear all connection monitors
+            if (heartbeatTimer) clearInterval(heartbeatTimer);
+            if (monitorTimer) clearInterval(monitorTimer);
+            
             window.switchView('login');
             window.showToast('Logged out successfully', 'info');
         };
@@ -950,9 +959,12 @@
                 viewClient.classList.add('active');
                 navIndicator.textContent = `Client Node`;
                 if (clientDisplayName) clientDisplayName.querySelector('span').textContent = currentUser.name;
-                if (clientDisplayLocation) clientDisplayLocation.textContent = currentUser.location;
+                if (clientDisplayLocation) clientDisplayLocation.textContent = navigator.onLine ? currentUser.location : 'Offline';
                 renderClientButtons();
                 renderClientAlerts();
+                
+                // Start Client Heartbeat
+                startHeartbeat();
             } else if (viewName === 'dashboard') {
                 viewDashboard.classList.add('active');
                 navIndicator.textContent = 'Operator Dashboard';
@@ -963,7 +975,7 @@
                 document.getElementById('tab-accounts').style.display = isFullAdmin ? 'block' : 'none';
                 document.getElementById('tab-buttons').style.display = isFullAdmin ? 'block' : 'none';
                 const tabAnalytics = document.getElementById('tab-analytics');
-                if (tabAnalytics) tabAnalytics.style.display = 'block'; // Ensure it's shown for all dashboard users
+                if (tabAnalytics) tabAnalytics.style.display = 'block'; 
                 
                 window.switchDashTab('alerts');
                 window.switchAlertTab('active');
@@ -972,6 +984,8 @@
                 if(isFullAdmin) {
                     renderAccountsList();
                     renderButtonsList();
+                    // Start Admin Monitor for offline clients
+                    startAdminMonitor();
                 }
             }
         };
@@ -1361,6 +1375,100 @@
         }
 
         function stopAlarm() {}
+
+        // --- CONNECTIVITY MONITOR (HEARTBEAT SYSTEM) ---
+
+        function startHeartbeat() {
+            if (heartbeatTimer) clearInterval(heartbeatTimer);
+            
+            // Send initial heartbeat
+            updateHeartbeat();
+            
+            // Send heartbeat every 10 seconds
+            heartbeatTimer = setInterval(updateHeartbeat, 10000); 
+        }
+
+        async function updateHeartbeat() {
+            if (navigator.onLine && currentUser && currentUser.role === 'client') {
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.username), {
+                        lastActive: new Date().toISOString()
+                    }, { merge: true });
+                } catch(e) {
+                    console.log("Heartbeat failed, waiting for next tick.");
+                }
+            }
+        }
+
+        function startAdminMonitor() {
+            if (monitorTimer) clearInterval(monitorTimer);
+            
+            // Check clients every 15 seconds
+            monitorTimer = setInterval(() => {
+                const roleData = ROLE_MAP[currentUser?.role];
+                if (!roleData || roleData.type !== 'admin') return;
+                
+                const now = new Date();
+                Object.values(window.dbUsers).forEach(user => {
+                    if (user.role === 'client' && user.lastActive) {
+                        const lastActive = new Date(user.lastActive);
+                        const diffSec = (now - lastActive) / 1000;
+                        
+                        // If client missed heartbeat for more than 25 seconds
+                        if (diffSec > 25) { 
+                            // Prevent spam: Check if an active "Connection Lost" alert already exists
+                            const hasActiveLostAlert = window.dbAlerts.some(a => 
+                                a.username === user.username && 
+                                a.status === 'active' && 
+                                a.typeLabel === 'System: Connection Lost'
+                            );
+                            
+                            if (!hasActiveLostAlert) {
+                                const newAlert = {
+                                    id: 'SYS-' + Date.now().toString(36).toUpperCase(),
+                                    username: user.username,
+                                    name: user.name,
+                                    location: user.location,
+                                    typeLabel: 'System: Connection Lost',
+                                    btnColor: 'yellow',
+                                    timestamp: new Date().toISOString(),
+                                    status: 'active',
+                                    acknowledgedBy: null,
+                                    resolvedBy: null
+                                };
+                                setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'alerts', newAlert.id), newAlert).catch(()=>{});
+                            }
+                        }
+                    }
+                });
+            }, 15000); 
+        }
+
+        // Local Browser Offline/Online Event Listeners
+        window.addEventListener('offline', () => {
+            if (currentUser && currentUser.role === 'client') {
+                window.showToast('Babala: Nawalan ng Internet Connection!', 'error');
+                const locEl = document.getElementById('client-display-location');
+                if (locEl) {
+                    locEl.innerHTML = `<i class="ph-fill ph-wifi-slash text-red-500"></i> Offline`;
+                    locEl.classList.replace('bg-blue-100', 'bg-red-100');
+                    locEl.classList.replace('text-blue-700', 'text-red-700');
+                }
+            }
+        });
+
+        window.addEventListener('online', () => {
+            if (currentUser && currentUser.role === 'client') {
+                window.showToast('Bumalik na ang Internet Connection.', 'success');
+                const locEl = document.getElementById('client-display-location');
+                if (locEl) {
+                    locEl.textContent = currentUser.location;
+                    locEl.classList.replace('bg-red-100', 'bg-blue-100');
+                    locEl.classList.replace('text-red-700', 'text-blue-700');
+                }
+                updateHeartbeat(); // Force update agad pagbalik ng net
+            }
+        });
 
         function getDuration(startIso, endIso) {
             if(!startIso || !endIso) return 'N/A';
