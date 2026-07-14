@@ -4,10 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SOS System</title>
+    
+    <!-- Load Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Load Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Load Tone.js for Alarm Sounds -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -371,9 +380,9 @@
                     </div>
                 </div>
 
-                <!-- Monthly Overall Summary Section (Bagong idinagdag para sa Buwanang Kabuuan) -->
+                <!-- Monthly Overall Summary Section -->
                 <div class="shrink-0 flex flex-col gap-2">
-                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">Buwanang Kabuuan (Monthly Overall)</h4>
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">Monthly Overall Summary</h4>
                     <div id="analytics-summary-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 overflow-y-auto max-h-48 hide-scrollbar p-1">
                         <!-- Summary cards injected here -->
                     </div>
@@ -381,15 +390,15 @@
                 
                 <div class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden min-h-0">
                     <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center shrink-0">
-                        <span class="font-bold text-gray-700 text-sm">Pang-araw-araw na Rekord (Daily Logs)</span>
+                        <span class="font-bold text-gray-700 text-sm">Daily Records</span>
                     </div>
                     <div class="flex-1 overflow-y-auto p-0 hide-scrollbar">
                         <div class="min-w-full overflow-x-auto">
                             <table class="w-full text-left text-sm whitespace-nowrap">
                                 <thead class="bg-gray-50/80 sticky top-0 z-10 backdrop-blur-sm shadow-sm">
                                     <tr class="text-gray-500 border-b border-gray-100">
-                                        <th class="px-4 sm:px-6 py-4 font-semibold">Petsa (Date)</th>
-                                        <th class="px-4 sm:px-6 py-4 font-semibold">Pangalan (Operator)</th>
+                                        <th class="px-4 sm:px-6 py-4 font-semibold">Date</th>
+                                        <th class="px-4 sm:px-6 py-4 font-semibold">Operator Name</th>
                                         <th class="px-4 sm:px-6 py-4 font-semibold text-center">Ack'd</th>
                                         <th class="px-4 sm:px-6 py-4 font-semibold text-center">Avg Ack Speed</th>
                                         <th class="px-4 sm:px-6 py-4 font-semibold text-center">Resolved</th>
@@ -622,17 +631,17 @@
     <!-- FIREBASE MODULE LOGIC -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const AUDIO_KEY = 'sos_custom_audio';  // Custom Audio Configuration (Kept Local)
+        const AUDIO_KEY = 'sos_custom_audio';  
         
         // Define Globals for UI Access
         window.dbUsers = {};
         window.dbBtns = [];
         window.dbAlerts = [];
         
-        // Firebase Config provided by User
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyBOI4O4ycaP5IgppJonTj9NWFMtvAEkjcM",
             authDomain: "sostracker-eb80f.firebaseapp.com",
@@ -647,7 +656,6 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // Fixed ID so your data stays consistent across all devices and hosting platforms
         const appId = 'sostracker-production';
 
         let firebaseUser = null;
@@ -713,8 +721,6 @@
             'yellow': { border: 'border-yellow-500', badge: 'bg-yellow-100 text-yellow-700' },
             'purple': { border: 'border-purple-500', badge: 'bg-purple-100 text-purple-700' }
         };
-
-        // --- FIREBASE SYNC LOGIC ---
 
         const initAuth = async () => {
             try {
@@ -816,8 +822,6 @@
         // Initialize connection
         initAuth();
 
-        // --- GLOBAL EXPORTS FOR INLINE HTML LISTENERS ---
-        
         window.confirmAction = function(title, message, actionCallback) {
             document.getElementById('confirm-title').textContent = title;
             document.getElementById('confirm-message').textContent = message;
@@ -931,10 +935,9 @@
             currentUser = null;
             stopAlarm();            
             
-            // Clear all connection monitors
             if (heartbeatTimer) clearInterval(heartbeatTimer);
             if (monitorTimer) clearInterval(monitorTimer);
-            
+
             window.switchView('login');
             window.showToast('Logged out successfully', 'info');
         };
@@ -963,7 +966,6 @@
                 renderClientButtons();
                 renderClientAlerts();
                 
-                // Start Client Heartbeat
                 startHeartbeat();
             } else if (viewName === 'dashboard') {
                 viewDashboard.classList.add('active');
@@ -984,11 +986,100 @@
                 if(isFullAdmin) {
                     renderAccountsList();
                     renderButtonsList();
-                    // Start Admin Monitor for offline clients
-                    startAdminMonitor();
                 }
+                
+                // Operators and Admins monitor the offline clients
+                startAdminMonitor();
             }
         };
+
+        function startHeartbeat() {
+            if (heartbeatTimer) clearInterval(heartbeatTimer);
+            updateHeartbeat();
+            // Client checks in every 5 seconds
+            heartbeatTimer = setInterval(updateHeartbeat, 5000); 
+        }
+
+        async function updateHeartbeat() {
+            if (navigator.onLine && currentUser && currentUser.role === 'client') {
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.username), {
+                        lastActive: new Date().toISOString()
+                    }, { merge: true });
+                } catch(e) {
+                    console.log("Heartbeat failed, waiting for next tick.");
+                }
+            }
+        }
+
+        function startAdminMonitor() {
+            if (monitorTimer) clearInterval(monitorTimer);
+            
+            // Dashboard checks clients every 5 seconds
+            monitorTimer = setInterval(() => {
+                const roleData = ROLE_MAP[currentUser?.role];
+                if (!roleData || (roleData.type !== 'admin' && roleData.type !== 'operator')) return;
+                
+                const now = new Date();
+                Object.entries(window.dbUsers).forEach(([username, user]) => {
+                    if (user.role === 'client' && user.lastActive) {
+                        const lastActive = new Date(user.lastActive);
+                        const diffSec = (now - lastActive) / 1000;
+                        
+                        // If client missed heartbeat for more than 10 seconds (Extremely fast detection)
+                        if (diffSec > 10) { 
+                            const hasActiveLostAlert = window.dbAlerts.some(a => 
+                                a.username === username && 
+                                a.status === 'active' && 
+                                a.typeLabel === 'System: Connection Lost'
+                            );
+                            
+                            if (!hasActiveLostAlert) {
+                                const newAlert = {
+                                    id: 'SYS-' + Date.now().toString(36).toUpperCase(),
+                                    username: username,
+                                    name: user.name || 'Unknown',
+                                    location: user.location || 'Unknown',
+                                    typeLabel: 'System: Connection Lost',
+                                    btnColor: 'yellow',
+                                    timestamp: new Date().toISOString(),
+                                    status: 'active',
+                                    acknowledgedBy: null,
+                                    resolvedBy: null
+                                };
+                                setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'alerts', newAlert.id), newAlert).catch(()=>{});
+                            }
+                        }
+                    }
+                });
+            }, 5000); 
+        }
+
+        // Local Browser Offline/Online Event Listeners
+        window.addEventListener('offline', () => {
+            if (currentUser && currentUser.role === 'client') {
+                window.showToast('Warning: Internet Connection Lost!', 'error');
+                const locEl = document.getElementById('client-display-location');
+                if (locEl) {
+                    locEl.innerHTML = `<i class="ph-fill ph-wifi-slash text-red-500"></i> Offline`;
+                    locEl.classList.replace('bg-blue-100', 'bg-red-100');
+                    locEl.classList.replace('text-blue-700', 'text-red-700');
+                }
+            }
+        });
+
+        window.addEventListener('online', () => {
+            if (currentUser && currentUser.role === 'client') {
+                window.showToast('Internet Connection Restored.', 'success');
+                const locEl = document.getElementById('client-display-location');
+                if (locEl) {
+                    locEl.textContent = currentUser.location;
+                    locEl.classList.replace('bg-red-100', 'bg-blue-100');
+                    locEl.classList.replace('text-red-700', 'text-blue-700');
+                }
+                updateHeartbeat(); 
+            }
+        });
 
         window.triggerSOS = async function(typeLabel, btnColor) {
             if (!currentUser || !firebaseUser) return;
@@ -1231,7 +1322,6 @@
             
             audioEnabled = !audioEnabled;
             
-            // Handle both desktop and mobile icons
             const toggles = [
                 { icon: document.getElementById('audio-icon'), status: document.getElementById('audio-status') },
                 { icon: document.getElementById('audio-icon-mobile'), status: document.getElementById('audio-status-mobile') }
@@ -1315,7 +1405,6 @@
 
         window.renderDashboardAlerts = renderDashboardAlerts;
 
-        // Setup role select listeners for Edit modal specifically inside module
         const editRoleSelectMod = document.getElementById('edit-acc-role');
         const editLocFieldMod = document.getElementById('edit-field-location');
         const editFloorInputMod = document.getElementById('edit-acc-floor');
@@ -1334,8 +1423,6 @@
                 }
             });
         }
-
-        // --- INTERNAL FUNCTIONS ---
 
         function initAudio() {
             if (alarmSynth) return;
@@ -1375,100 +1462,6 @@
         }
 
         function stopAlarm() {}
-
-        // --- CONNECTIVITY MONITOR (HEARTBEAT SYSTEM) ---
-
-        function startHeartbeat() {
-            if (heartbeatTimer) clearInterval(heartbeatTimer);
-            
-            // Send initial heartbeat
-            updateHeartbeat();
-            
-            // Send heartbeat every 10 seconds
-            heartbeatTimer = setInterval(updateHeartbeat, 10000); 
-        }
-
-        async function updateHeartbeat() {
-            if (navigator.onLine && currentUser && currentUser.role === 'client') {
-                try {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.username), {
-                        lastActive: new Date().toISOString()
-                    }, { merge: true });
-                } catch(e) {
-                    console.log("Heartbeat failed, waiting for next tick.");
-                }
-            }
-        }
-
-        function startAdminMonitor() {
-            if (monitorTimer) clearInterval(monitorTimer);
-            
-            // Check clients every 15 seconds
-            monitorTimer = setInterval(() => {
-                const roleData = ROLE_MAP[currentUser?.role];
-                if (!roleData || roleData.type !== 'admin') return;
-                
-                const now = new Date();
-                Object.values(window.dbUsers).forEach(user => {
-                    if (user.role === 'client' && user.lastActive) {
-                        const lastActive = new Date(user.lastActive);
-                        const diffSec = (now - lastActive) / 1000;
-                        
-                        // If client missed heartbeat for more than 25 seconds
-                        if (diffSec > 25) { 
-                            // Prevent spam: Check if an active "Connection Lost" alert already exists
-                            const hasActiveLostAlert = window.dbAlerts.some(a => 
-                                a.username === user.username && 
-                                a.status === 'active' && 
-                                a.typeLabel === 'System: Connection Lost'
-                            );
-                            
-                            if (!hasActiveLostAlert) {
-                                const newAlert = {
-                                    id: 'SYS-' + Date.now().toString(36).toUpperCase(),
-                                    username: user.username,
-                                    name: user.name,
-                                    location: user.location,
-                                    typeLabel: 'System: Connection Lost',
-                                    btnColor: 'yellow',
-                                    timestamp: new Date().toISOString(),
-                                    status: 'active',
-                                    acknowledgedBy: null,
-                                    resolvedBy: null
-                                };
-                                setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'alerts', newAlert.id), newAlert).catch(()=>{});
-                            }
-                        }
-                    }
-                });
-            }, 15000); 
-        }
-
-        // Local Browser Offline/Online Event Listeners
-        window.addEventListener('offline', () => {
-            if (currentUser && currentUser.role === 'client') {
-                window.showToast('Babala: Nawalan ng Internet Connection!', 'error');
-                const locEl = document.getElementById('client-display-location');
-                if (locEl) {
-                    locEl.innerHTML = `<i class="ph-fill ph-wifi-slash text-red-500"></i> Offline`;
-                    locEl.classList.replace('bg-blue-100', 'bg-red-100');
-                    locEl.classList.replace('text-blue-700', 'text-red-700');
-                }
-            }
-        });
-
-        window.addEventListener('online', () => {
-            if (currentUser && currentUser.role === 'client') {
-                window.showToast('Bumalik na ang Internet Connection.', 'success');
-                const locEl = document.getElementById('client-display-location');
-                if (locEl) {
-                    locEl.textContent = currentUser.location;
-                    locEl.classList.replace('bg-red-100', 'bg-blue-100');
-                    locEl.classList.replace('text-red-700', 'text-blue-700');
-                }
-                updateHeartbeat(); // Force update agad pagbalik ng net
-            }
-        });
 
         function getDuration(startIso, endIso) {
             if(!startIso || !endIso) return 'N/A';
@@ -1832,12 +1825,10 @@
 
             const selectedMonthStr = monthInput.value;
             
-            // Initialization
             const monthlyStats = {};
             const dailyStats = {};
             const initStats = () => ({ ackCount: 0, totalAckSec: 0, resCount: 0, totalResSec: 0 });
 
-            // Calculate speeds per alert
             window.dbAlerts.forEach(alert => {
                 const alertDate = new Date(alert.timestamp);
                 const mm = String(alertDate.getMonth() + 1).padStart(2, '0');
@@ -1846,12 +1837,9 @@
                 const alertDateStr = alertDate.toISOString().split('T')[0];
 
                 if (alertMonthStr === selectedMonthStr) {
-                    // Dito ina-assign ang oras sa kung sinong operator ang nag-acknowledge, 
-                    // kahit ang client pa ang nag-click ng "Resolved".
                     const operatorName = alert.acknowledgedBy;
                     if (!operatorName) return;
 
-                    // Filter access (Non-admin sees only self)
                     if (!isFullAdmin && operatorName !== currentUser.name) return;
 
                     if (!monthlyStats[operatorName]) monthlyStats[operatorName] = initStats();
@@ -1870,7 +1858,6 @@
                     }
 
                     if (alert.resolvedAt && alert.acknowledgedAt) {
-                        // FIX: Ang resDiff ay in-assign sa `alert.acknowledgedBy` (ang operator)
                         const resDiff = Math.floor((new Date(alert.resolvedAt) - new Date(alert.acknowledgedAt)) / 1000);
                         if (resDiff >= 0) {
                             monthlyStats[operatorName].resCount++;
@@ -1893,14 +1880,12 @@
 
             const getAvg = (total, count) => count > 0 ? Math.floor(total / count) : 0;
 
-            // Render Monthly Overall Summary Cards
             summaryContainer.innerHTML = '';
             let summaryEntries = Object.entries(monthlyStats);
 
             if (summaryEntries.length === 0) {
-                summaryContainer.innerHTML = `<div class="text-sm text-gray-500 py-2 col-span-full">Walang data para sa buwan na ito. (No data for this month.)</div>`;
+                summaryContainer.innerHTML = `<div class="text-sm text-gray-500 py-2 col-span-full">No data available for this month.</div>`;
             } else {
-                // Sort by Fastest Average Ack Speed
                 summaryEntries.sort((a, b) => {
                     const avgAckA = getAvg(a[1].totalAckSec, a[1].ackCount);
                     const avgAckB = getAvg(b[1].totalAckSec, b[1].ackCount);
@@ -1940,12 +1925,11 @@
                 });
             }
 
-            // Render Daily Logs Table
             tbody.innerHTML = '';
             const dailyDates = Object.keys(dailyStats).sort((a, b) => new Date(b) - new Date(a));
 
             if (dailyDates.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">Walang pang-araw-araw na rekord. (No daily records.)</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">No daily records found.</td></tr>`;
                 return;
             }
 
