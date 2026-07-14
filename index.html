@@ -638,6 +638,7 @@
         
         // Define Globals for UI Access
         window.dbUsers = {};
+        window.clientHeartbeats = {}; // Tracks client pulses locally by the admin's clock
         window.dbBtns = [];
         window.dbAlerts = [];
         
@@ -765,8 +766,28 @@
             // SYNC USERS
             const usersRef = collection(db, 'artifacts', appId, 'public', 'data', 'users');
             unsubUsers = onSnapshot(usersRef, (snapshot) => {
-                window.dbUsers = {};
-                snapshot.forEach(doc => { window.dbUsers[doc.id] = doc.data(); });
+                const newUsers = {};
+                snapshot.forEach(doc => { 
+                    const data = doc.data(); 
+                    const oldData = window.dbUsers[doc.id];
+
+                    // Clock-drift-proof heartbeat tracking
+                    if (data.role === 'client' && data.lastActive) {
+                        if (oldData && oldData.lastActive !== data.lastActive) {
+                            // The client just updated its heartbeat while we were watching
+                            window.clientHeartbeats[doc.id] = Date.now();
+                        } else if (!window.clientHeartbeats[doc.id]) {
+                            // We just loaded this user. Check if the timestamp looks reasonably fresh (within 2 minutes)
+                            const driftSafeDiff = Math.abs(Date.now() - new Date(data.lastActive).getTime());
+                            if (driftSafeDiff < 120000) { 
+                                window.clientHeartbeats[doc.id] = Date.now();
+                            }
+                        }
+                    }
+                    newUsers[doc.id] = data;
+                });
+                
+                window.dbUsers = newUsers;
                 
                 if (snapshot.empty && !isSystemReady) {
                     setDoc(doc(usersRef, 'admin'), { password: '123', role: 'tss', name: 'System Admin', location: 'Command Center' });
@@ -1020,14 +1041,14 @@
                 const roleData = ROLE_MAP[currentUser?.role];
                 if (!roleData || (roleData.type !== 'admin' && roleData.type !== 'operator')) return;
                 
-                const now = new Date();
+                const now = Date.now();
                 Object.entries(window.dbUsers).forEach(([username, user]) => {
-                    if (user.role === 'client' && user.lastActive) {
-                        const lastActive = new Date(user.lastActive);
-                        const diffSec = (now - lastActive) / 1000;
+                    // Check against LOCAL operator time tracking instead of remote user time
+                    if (user.role === 'client' && window.clientHeartbeats[username]) {
+                        const diffSec = (now - window.clientHeartbeats[username]) / 1000;
                         
-                        // If client missed heartbeat for more than 10 seconds (Extremely fast detection)
-                        if (diffSec > 10) { 
+                        // 15 seconds without a pulse triggers the offline alert (Safe from clock drift!)
+                        if (diffSec > 15) { 
                             const hasActiveLostAlert = window.dbAlerts.some(a => 
                                 a.username === username && 
                                 a.status === 'active' && 
